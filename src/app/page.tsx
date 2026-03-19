@@ -1,45 +1,40 @@
-import { sql } from '@vercel/postgres';
+import { sql } from '@/lib/db';
 
-export default async function PortfolioPage() {
-  const { rows: projects } = await sql`SELECT * FROM projects ORDER BY created_at DESC`;
+export const dynamic = 'force-dynamic';
+
+export default async function Home() {
+  const projects = await sql`SELECT * FROM projects ORDER BY created_at DESC`;
 
   return (
-    <main className="min-h-screen bg-white">
-      {/* Хедер с динамическим цветом текста */}
-      <nav className="p-6 border-b flex justify-between items-center">
-        <h1 className="text-2xl font-black tracking-tighter" style={{ color: 'var(--primary)' }}>
-          MY PORTFOLIO
-        </h1>
-        <a href="/admin" className="text-sm text-slate-500 hover:underline">Вход для автора</a>
+    <div className="min-h-screen bg-white selection:bg-black selection:text-white">
+      <nav className="p-8 flex justify-between items-center max-w-7xl mx-auto">
+        <span className="text-xl font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>
+          Portfolio.26
+        </span>
+        <div className="flex gap-8 text-sm font-medium uppercase tracking-tighter">
+          <a href="#" className="hover:opacity-50 transition">Work</a>
+          <a href="#" className="hover:opacity-50 transition">About</a>
+          <a href="/admin" className="opacity-20 hover:opacity-100 transition">Admin</a>
+        </div>
       </nav>
 
-      {/* Сетка проектов */}
-      <div className="max-w-6xl mx-auto p-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {projects.map((project) => (
-          <div key={project.id} className="group cursor-pointer">
-            <div className="relative overflow-hidden rounded-2xl aspect-video bg-slate-100 mb-4">
-              <img 
-                src={project.image_url} 
-                alt={project.title} 
-                className="object-cover w-full h-full group-hover:scale-105 transition duration-500"
-              />
+      <main className="max-w-7xl mx-auto px-8 py-20">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
+          {projects.map((p) => (
+            <div key={p.id} className="group">
+              <div className="relative aspect-[16/10] overflow-hidden rounded-3xl bg-slate-100 mb-6">
+                <img 
+                  src={p.image_url} 
+                  className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-700" 
+                  alt={p.title} 
+                />
+              </div>
+              <h2 className="text-2xl font-bold tracking-tight mb-2 uppercase italic">{p.title}</h2>
+              <p className="text-slate-400 text-sm line-clamp-2 leading-relaxed">{p.description}</p>
             </div>
-            <h3 className="text-lg font-bold group-hover:underline" style={{ color: 'var(--primary)' }}>
-              {project.title}
-            </h3>
-          </div>
-        ))}
-      </div>
-
-      {/* Кнопка с динамическим фоном */}
-      <div className="text-center py-20">
-        <button 
-          className="px-8 py-3 text-white font-bold rounded-full shadow-xl hover:opacity-90 transition"
-          style={{ backgroundColor: 'var(--primary)' }}
-        >
-          Связаться со мной
-        </button>
-      </div>
-    </main>
+          ))}
+        </div>
+      </main>
+    </div>
   );
 }

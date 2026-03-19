@@ -2,80 +2,87 @@
 import { useState } from 'react';
 import { upload } from '@vercel/blob/client';
 
-export default function AdminDashboard() {
+export default function AdvancedAdmin() {
   const [loading, setLoading] = useState(false);
 
-  // Функция сохранения настроек дизайна (Цвета)
-  async function updateTheme(color: string) {
+  // Смена цвета (Design System)
+  const updateColor = async (color: string) => {
     await fetch('/api/settings', {
       method: 'POST',
-      body: JSON.stringify({ key: 'primary_color', value: color }),
+      body: JSON.stringify({ key: 'primary_color', value: color })
     });
-    alert('Цвет сайта изменен!');
-    window.location.reload(); // Чтобы обновить тему
-  }
+    window.location.reload();
+  };
 
-  // Функция добавления проекта
-  async function addProject(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  // Загрузка проекта
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     setLoading(true);
-    const formData = new FormData(event.currentTarget);
-    const file = formData.get('image') as File;
+    const fd = new FormData(e.currentTarget);
+    const file = fd.get('image') as File;
 
-    // 1. Грузим в Blob
-    const blob = await upload(file.name, file, {
-      access: 'public',
-      handleUploadUrl: '/api/upload',
-    });
+    try {
+      const blob = await upload(file.name, file, {
+        access: 'public',
+        handleUploadUrl: '/api/upload',
+      });
 
-    // 2. Сохраняем в SQL
-    await fetch('/api/projects', {
-      method: 'POST',
-      body: JSON.stringify({
-        title: formData.get('title'),
-        image_url: blob.url,
-      }),
-    });
-
+      await fetch('/api/projects', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: fd.get('title'),
+          image_url: blob.url,
+          description: fd.get('desc')
+        })
+      });
+      alert("Успех!");
+    } catch (err) { alert("Ошибка загрузки"); }
     setLoading(false);
-    alert('Проект добавлен!');
-  }
+  };
 
   return (
-    <div className="p-10 bg-slate-50 min-h-screen font-sans">
-      <h1 className="text-3xl font-black mb-10 text-slate-900">Advanced Admin CMS</h1>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-        {/* Модуль Дизайна */}
-        <section className="bg-white p-6 rounded-2xl shadow-sm border">
-          <h2 className="text-xl font-bold mb-4">Настройки Дизайна</h2>
-          <p className="text-sm text-slate-500 mb-4">Выберите основной цвет вашего портфолио</p>
-          <div className="flex gap-2">
-            {['#000000', '#2563eb', '#16a34a', '#dc2626', '#7c3aed'].map((color) => (
-              <button 
-                key={color}
-                onClick={() => updateTheme(color)}
-                className="w-10 h-10 rounded-full border-2 border-white shadow-md"
-                style={{ backgroundColor: color }}
-              />
-            ))}
-          </div>
-        </section>
+    <div className="min-h-screen bg-slate-50 p-8 font-sans">
+      <header className="max-w-5xl mx-auto flex justify-between items-center mb-12">
+        <h1 className="text-4xl font-black tracking-tighter italic">CMS v6.0</h1>
+        <div className="flex gap-2 bg-white p-2 rounded-full border shadow-sm">
+          {['#000000', '#2563eb', '#7c3aed', '#db2777', '#ea580c'].map(c => (
+            <button 
+              key={c} 
+              onClick={() => updateColor(c)}
+              className="w-8 h-8 rounded-full border-2 border-slate-100 hover:scale-110 transition"
+              style={{ backgroundColor: c }}
+            />
+          ))}
+        </div>
+      </header>
 
-        {/* Модуль Проектов */}
-        <section className="bg-white p-6 rounded-2xl shadow-sm border">
-          <h2 className="text-xl font-bold mb-4">Добавить новый проект</h2>
-          <form onSubmit={addProject} className="space-y-4">
-            <input name="title" placeholder="Название проекта" className="w-full border p-3 rounded-lg focus:ring-2 ring-slate-200 outline-none" required />
-            <div className="border-2 border-dashed border-slate-200 p-4 rounded-lg text-center cursor-pointer hover:bg-slate-50 transition">
-              <input name="image" type="file" required className="cursor-pointer" />
+      <main className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
+        <section className="md:col-span-2 bg-white p-8 rounded-3xl border shadow-sm">
+          <h2 className="text-xl font-bold mb-6">Новый проект</h2>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <input name="title" placeholder="Название проекта" className="w-full p-4 bg-slate-50 rounded-xl border-none outline-none focus:ring-2 ring-blue-500" required />
+            <textarea name="desc" placeholder="Описание" className="w-full p-4 bg-slate-50 rounded-xl border-none outline-none focus:ring-2 ring-blue-500 h-32" />
+            <div className="relative h-40 border-2 border-dashed border-slate-200 rounded-2xl flex items-center justify-center hover:bg-slate-50 transition cursor-pointer">
+              <input name="image" type="file" className="absolute inset-0 opacity-0 cursor-pointer" required />
+              <span className="text-slate-400 font-medium">Кликните для выбора скриншота</span>
             </div>
-            <button disabled={loading} className="w-full bg-slate-900 text-white font-bold p-3 rounded-lg hover:opacity-90 transition">
-              {loading ? 'Загрузка...' : 'Сохранить проект'}
+            <button disabled={loading} className="w-full py-4 bg-black text-white rounded-xl font-bold text-lg hover:bg-slate-800 transition disabled:opacity-50">
+              {loading ? 'СОХРАНЕНИЕ...' : 'ОПУБЛИКОВАТЬ В ПОРТФОЛИО'}
             </button>
           </form>
         </section>
-      </div>
+
+        <aside className="space-y-8">
+          <div className="bg-black text-white p-8 rounded-3xl">
+            <h3 className="text-lg font-bold mb-2">Статус системы</h3>
+            <p className="text-slate-400 text-sm">База: Neon Postgres 17</p>
+            <p className="text-slate-400 text-sm">Хранилище: Vercel Blob</p>
+            <div className="mt-4 h-1 w-full bg-slate-800 rounded-full overflow-hidden">
+              <div className="h-full bg-green-500 w-[100%]" />
+            </div>
+          </div>
+        </aside>
+      </main>
     </div>
   );
 }
