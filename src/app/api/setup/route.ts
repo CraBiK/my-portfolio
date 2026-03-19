@@ -1,27 +1,20 @@
 import { sql } from '@vercel/postgres';
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
-    // Таблица для проектов
-    await sql`CREATE TABLE IF NOT EXISTS projects (
-      id SERIAL PRIMARY KEY,
-      title TEXT NOT NULL,
-      image_url TEXT NOT NULL,
-      description TEXT,
-      link TEXT,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );`;
+    // Создаем таблицы по одной
+    await sql`CREATE TABLE IF NOT EXISTS projects (id SERIAL PRIMARY KEY, title TEXT NOT NULL, image_url TEXT NOT NULL, description TEXT, link TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`;
+    await sql`CREATE TABLE IF NOT EXISTS settings (id SERIAL PRIMARY KEY, key TEXT UNIQUE NOT NULL, value TEXT NOT NULL);`;
+    
+    // Добавляем начальный цвет, если его нет
+    await sql`INSERT INTO settings (key, value) VALUES ('primary_color', '#000000') ON CONFLICT (key) DO NOTHING;`;
 
-    // Таблица для настроек дизайна (цвета, лого)
-    await sql`CREATE TABLE IF NOT EXISTS settings (
-      id SERIAL PRIMARY KEY,
-      key TEXT UNIQUE NOT NULL,
-      value TEXT NOT NULL
-    );`;
-
-    return NextResponse.json({ message: "Таблицы созданы успешно" });
+    return NextResponse.json({ message: "База данных готова!" });
   } catch (error) {
-    return NextResponse.json({ error }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ error: "Ошибка настройки базы" }, { status: 500 });
   }
 }
