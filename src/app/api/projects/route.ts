@@ -3,8 +3,9 @@ import { NextResponse } from 'next/server';
 
 // Получение списка проектов
 export async function GET() {
-  const { rows } = await sql`SELECT * FROM projects ORDER BY created_at DESC`;
-  return NextResponse.json(rows);
+  // Просто возвращаем результат запроса напрямую
+  const projects = await sql`SELECT * FROM projects ORDER BY created_at DESC`;
+  return NextResponse.json(projects);
 }
 
 // Добавление нового проекта
