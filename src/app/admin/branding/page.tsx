@@ -1,5 +1,14 @@
 'use client';
 import { useState } from 'react';
+import { 
+  Palette, 
+  LayoutDashboard, 
+  Rocket, 
+  FileText, 
+  Layers, 
+  Shield, 
+  Settings 
+} from 'lucide-react';
 
 export default function BrandingPage() {
   const [logoType, setLogoType] = useState('svg');
@@ -38,7 +47,41 @@ export default function BrandingPage() {
               </div>
             </div>
           </section>
+<section className="bg-[#0f0f0f] border border-white/5 p-8 rounded-[2rem] shadow-xl space-y-8">
+  <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-white">
+    <Palette className="text-indigo-500" size={20}/> Design Tokens
+  </h2>
 
+  {/* Выбор шрифта */}
+  <div className="space-y-3">
+    <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">System Font</label>
+    <select 
+      className="w-full bg-black border border-white/10 rounded-xl p-4 text-white outline-none focus:ring-2 ring-indigo-500"
+      onChange={(e) => save('font_family', e.target.value)}
+    >
+      <option value="Geist Sans">Geist Sans (Modern)</option>
+      <option value="Inter">Inter (Clean)</option>
+      <option value="JetBrains Mono">JetBrains Mono (Coder)</option>
+      <option value="Space Grotesk">Space Grotesk (Tech)</option>
+    </select>
+  </div>
+
+  {/* Закругление углов */}
+  <div className="space-y-3">
+    <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Interface Radius</label>
+    <div className="flex gap-4">
+      {['0px', '8px', '16px', '32px'].map(r => (
+        <button 
+          key={r}
+          onClick={() => save('border_radius', r)}
+          className="flex-1 py-3 bg-black border border-white/10 rounded-xl hover:border-indigo-500 transition text-xs"
+        >
+          {r === '0px' ? 'Sharp' : r}
+        </button>
+      ))}
+    </div>
+  </div>
+</section>
           {/* Логотип */}
           <section className="bg-[#0f0f0f] border border-white/5 p-8 rounded-[2rem] shadow-xl">
             <h2 className="text-xl font-bold mb-6">Конфигурация Логотипа</h2>

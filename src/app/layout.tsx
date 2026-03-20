@@ -4,23 +4,27 @@ import './globals.css';
 export const dynamic = 'force-dynamic';
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  // Достаем цвет и заголовок из базы
-  const settings = await sql`SELECT key, value FROM settings`;
-  const config = Object.fromEntries(settings.map(s => [s.key, s.value]));
-  
-  const primaryColor = config.primary_color || '#000000';
+  // Получаем все настройки из базы одним запросом
+  const { rows } = await sql`SELECT key, value FROM settings`;
+  const cfg = Object.fromEntries(rows.map(r => [r.key, r.value]));
 
   return (
     <html lang="ru">
       <head>
-        <title>{config.site_title}</title>
+        <style dangerouslySetInnerHTML={{ __html: `
+          :root {
+            --primary: ${cfg.primary_color || '#6366f1'};
+            --radius: ${cfg.border_radius || '16px'};
+            --font-main: "${cfg.font_family || 'Geist Sans'}", sans-serif;
+          }
+          body { 
+            font-family: var(--font-main); 
+            background: #050505;
+          }
+          .rounded-custom { border-radius: var(--radius); }
+        `}} />
       </head>
-      <body 
-        className="antialiased" 
-        style={{ '--primary': primaryColor } as React.CSSProperties}
-      >
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
