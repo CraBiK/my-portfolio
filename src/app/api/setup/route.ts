@@ -6,7 +6,16 @@ export async function GET() {
   try {
     // 1. БРЕНДИНГ И ДИЗАЙН
     await sql`CREATE TABLE IF NOT EXISTS settings (id SERIAL PRIMARY KEY, key TEXT UNIQUE, value TEXT);`;
-    
+    await sql`
+  CREATE TABLE IF NOT EXISTS messages (
+    id SERIAL PRIMARY KEY,
+    name TEXT,
+    email TEXT,
+    message TEXT,
+    is_read BOOLEAN DEFAULT false, -- Убеждаемся, что колонка называется именно так
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+`;
     // 2. КОНТЕНТ (ПРОЕКТЫ, СТРАНИЦЫ, НАВЫКИ)
     await sql`CREATE TABLE IF NOT EXISTS projects (id SERIAL PRIMARY KEY, title TEXT, slug TEXT UNIQUE, image_url TEXT, description TEXT, content JSONB, tech_stack TEXT[], live_url TEXT, github_url TEXT, featured BOOLEAN DEFAULT false, order_index INT);`;
     await sql`CREATE TABLE IF NOT EXISTS pages (id SERIAL PRIMARY KEY, title TEXT, slug TEXT UNIQUE, content JSONB, meta_title TEXT, meta_desc TEXT, published BOOLEAN DEFAULT true);`;

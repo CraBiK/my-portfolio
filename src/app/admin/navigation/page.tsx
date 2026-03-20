@@ -14,21 +14,26 @@ export default function NavManager() {
   return (
     <div className="max-w-4xl">
       <div className="flex justify-between items-center mb-12">
-        <h2 className="text-3xl font-black text-white">Menu Structure</h2>
-        <button onClick={addLink} className="bg-indigo-600 px-6 py-3 rounded-2xl text-white font-bold flex items-center gap-2 hover:bg-indigo-500 transition">
+        <h2 className="text-3xl font-black text-foreground uppercase italic tracking-tighter">Навигация</h2>
+        <button 
+          onClick={addLink} 
+          className="bg-primary text-primary-foreground px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:opacity-90 transition-all shadow-sm focus-visible:ring-2 focus-visible:ring-ring outline-none"
+        >
           <Plus size={18}/> Добавить пункт
         </button>
       </div>
       
       <div className="space-y-3">
         {/* Список ссылок с возможностью удаления */}
-        <div className="p-6 bg-white/5 border border-white/10 rounded-3xl flex items-center gap-6 group hover:border-white/20 transition">
-           <GripVertical className="text-slate-700 group-hover:text-slate-500" />
+        <div className="p-6 bg-card text-card-foreground border border-border rounded-3xl flex items-center gap-6 group hover:border-primary/30 transition-all shadow-sm">
+           <GripVertical className="text-muted-foreground/30 group-hover:text-muted-foreground transition-colors" />
            <div className="flex-1">
-              <div className="text-white font-bold">Projects</div>
-              <div className="text-xs text-slate-600">/projects</div>
+              <div className="text-foreground font-bold">Проекты</div>
+              <div className="text-xs text-muted-foreground font-mono">/projects</div>
            </div>
-           <button className="text-slate-700 hover:text-red-500 transition"><Trash2 size={18}/></button>
+           <button className="text-muted-foreground hover:text-destructive transition-all p-2 rounded-lg hover:bg-destructive/10 outline-none focus-visible:ring-2 focus-visible:ring-destructive">
+             <Trash2 size={18}/>
+           </button>
         </div>
       </div>
     </div>

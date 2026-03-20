@@ -1,11 +1,11 @@
 import Header from "@/components/Header";
 import { sql } from '@/lib/db';
+import { ThemeToggle } from "../components/ThemeToggle";
 import { ArrowUpRight, Github, Mail, Terminal } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
-  // Получаем всё параллельно для скорости
   const [nav, projects, skills] = await Promise.all([
     sql`SELECT * FROM navigation ORDER BY order_index ASC`,
     sql`SELECT * FROM projects ORDER BY created_at DESC LIMIT 6`,
@@ -13,100 +13,126 @@ export default async function HomePage() {
   ]);
 
   return (
-		<>
-			<Header /> {/* Твой хедер теперь здесь! */}
-    <div className="min-h-screen bg-[#050505] text-slate-300">
-      {/* 1. Header (Dynamic Nav) */}
-      <nav className="fixed top-0 w-full z-50 border-b border-white/5 bg-[#050505]/80 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-8 h-20 flex justify-between items-center">
-          <span className="text-xl font-black tracking-tighter text-white">
-            WEB<span style={{ color: 'var(--primary)' }}>.</span>CODER
-          </span>
-          <div className="hidden md:flex gap-8">
-            {nav.map(item => (
-              <a key={item.id} href={item.url} className="text-xs font-bold uppercase tracking-widest hover:text-white transition">
-                {item.label}
-              </a>
-            ))}
+    <>
+      <Header />
+      <div className="min-h-screen bg-background text-foreground selection:bg-primary/20">
+        {/* 1. Навигация */}
+        <nav className="fixed top-0 w-full z-50 border-b border-border bg-background/80 backdrop-blur-xl">
+  <div className="max-w-7xl mx-auto px-8 h-20 flex justify-between items-center">
+    {/* Логотип */}
+    <span className="text-xl font-black tracking-tighter text-foreground uppercase italic">
+      ВЕБ<span className="text-primary">.</span>КОДЕР
+    </span>
+
+    {/* Основное меню (центр) */}
+    <div className="hidden md:flex gap-8">
+      {nav.map(item => (
+        <a 
+          key={item.id} 
+          href={item.url} 
+          className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground hover:text-primary transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+        >
+          {item.label}
+        </a>
+      ))}
+    </div>
+
+    {/* Правый блок: Админка + Переключатель */}
+    <div className="flex items-center gap-6">
+      <a 
+        href="/admin" 
+        className="text-[10px] font-black uppercase tracking-widest opacity-20 hover:opacity-100 hover:text-primary transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+      >
+        Админка
+      </a>
+      <ThemeToggle />
+    </div>
+  </div>
+</nav>
+
+        {/* 2. Герой-секция */}
+        <section className="pt-40 pb-20 px-8 max-w-7xl mx-auto">
+          <h1 className="text-7xl md:text-9xl font-black tracking-tighter text-foreground mb-8 leading-[0.8] uppercase italic">
+            СОЗДАЮ <br /> 
+            <span className="text-primary">ЦИФРОВОЙ</span> ОПЫТ
+          </h1>
+          <p className="max-w-xl text-lg text-muted-foreground leading-relaxed font-medium">
+            Я разрабатываю высокопроизводительные веб-приложения и системы управления, где каждый пиксель имеет значение.
+          </p>
+        </section>
+
+        {/* 3. Матрица навыков */}
+        <section className="py-20 px-8 max-w-7xl mx-auto border-t border-border">
+          <div className="flex justify-between items-end mb-12">
+            <h2 className="text-3xl font-black text-foreground tracking-tight italic uppercase">Стек технологий</h2>
           </div>
-          <a href="/admin" className="text-[10px] opacity-20 hover:opacity-100 transition">CMS</a>
-        </div>
-      </nav>
-
-      {/* 2. Hero Section */}
-      <section className="pt-40 pb-20 px-8 max-w-7xl mx-auto">
-        <h1 className="text-7xl md:text-9xl font-black tracking-tighter text-white mb-8 leading-[0.8]">
-          CRAFTING <br /> 
-          <span style={{ color: 'var(--primary)' }}>DIGITAL</span> EXPERIENCE
-        </h1>
-        <p className="max-w-xl text-lg text-slate-500 leading-relaxed">
-          Я создаю высокопроизводительные веб-приложения и системы управления, где каждый пиксель имеет значение.
-        </p>
-      </section>
-
-      {/* 3. Skills Matrix (from Admin) */}
-      <section className="py-20 px-8 max-w-7xl mx-auto border-t border-white/5">
-        <div className="flex justify-between items-end mb-12">
-          <h2 className="text-3xl font-bold text-white tracking-tight italic">Tech Stack</h2>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          {skills.map(skill => (
-            <div key={skill.id} className="p-6 bg-[#0a0a0a] border border-white/5 rounded-3xl hover:border-indigo-500/30 transition group">
-              <div className="text-indigo-500 mb-4 group-hover:scale-110 transition">
-                <Terminal size={24} />
-              </div>
-              <div className="font-bold text-white text-sm uppercase">{skill.name}</div>
-              <div className="text-[10px] text-slate-600 mt-1">{skill.level}% Mastery</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* 4. Portfolio (from Admin) */}
-      <section className="py-20 px-8 max-w-7xl mx-auto border-t border-white/5">
-        <h2 className="text-3xl font-bold text-white tracking-tight italic mb-12">Featured Works</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-          {projects.map(project => (
-            <div key={project.id} className="group cursor-pointer">
-              <div className="relative aspect-video rounded-[2.5rem] overflow-hidden bg-slate-900 border border-white/5 mb-6">
-                <img 
-                  src={project.image_url} 
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
-                  alt={project.title}
-                />
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <ArrowUpRight size={48} className="text-white" />
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            {skills.map(skill => (
+              <div 
+                key={skill.id} 
+                className="p-6 bg-card border border-border rounded-3xl hover:border-primary/40 transition-all group shadow-sm"
+              >
+                <div className="text-primary mb-4 group-hover:scale-110 transition-transform duration-300">
+                  <Terminal size={24} />
+                </div>
+                <div className="font-black text-foreground text-xs uppercase tracking-tight">{skill.name}</div>
+                <div className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-tighter">
+                  Опыт: {skill.level}%
                 </div>
               </div>
-              <div className="flex justify-between items-start px-4">
-                <div>
-                  <h3 className="text-xl font-bold text-white uppercase">{project.title}</h3>
-                  <div className="flex gap-2 mt-2">
-                    {project.tech_stack?.map((t: string) => (
-                      <span key={t} className="text-[10px] text-slate-500 border border-white/10 px-2 py-1 rounded-md uppercase font-mono">
-                        {t}
-                      </span>
-                    ))}
+            ))}
+          </div>
+        </section>
+
+        {/* 4. Портфолио */}
+        <section className="py-20 px-8 max-w-7xl mx-auto border-t border-border">
+          <h2 className="text-3xl font-black text-foreground tracking-tight italic mb-12 uppercase">Избранные проекты</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+            {projects.map(project => (
+              <div key={project.id} className="group cursor-pointer">
+                <div className="relative aspect-video rounded-[2.5rem] overflow-hidden bg-muted border border-border mb-6">
+                  <img 
+                    src={project.image_url} 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
+                    alt={project.title}
+                  />
+                  <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
+                    <ArrowUpRight size={48} className="text-primary" />
+                  </div>
+                </div>
+                <div className="flex justify-between items-start px-4">
+                  <div>
+                    <h3 className="text-xl font-black text-foreground uppercase italic tracking-tight">
+                      {project.title}
+                    </h3>
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {project.tech_stack?.map((t: string) => (
+                        <span 
+                          key={t} 
+                          className="text-[10px] font-bold text-muted-foreground border border-border px-3 py-1 rounded-full uppercase tracking-tighter bg-secondary/50"
+                        >
+                          {t}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
 
-      {/* 5. Footer */}
-      <footer className="py-20 border-t border-white/5 text-center">
-        <div className="flex justify-center gap-6 mb-8">
-           <Github className="cursor-pointer hover:text-white transition" />
-           <Mail className="cursor-pointer hover:text-white transition" />
-        </div>
-        <p className="text-xs text-slate-600 uppercase tracking-widest">
-           {/* Данные подтянутся из site_config в layout.tsx */}
-           Built on Next.js 16 & Neon SQL
-        </p>
-      </footer>
-    </div>
-		</>
+        {/* 5. Подвал */}
+        <footer className="py-20 border-t border-border text-center bg-card/30">
+          <div className="flex justify-center gap-6 mb-8">
+             <Github className="cursor-pointer text-muted-foreground hover:text-primary transition-colors" />
+             <Mail className="cursor-pointer text-muted-foreground hover:text-primary transition-colors" />
+          </div>
+          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em]">
+             Создано на Next.js 16 & Neon SQL
+          </p>
+        </footer>
+      </div>
+    </>
   );
 }

@@ -1,3 +1,4 @@
+'use client';
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LayoutDashboard, Rocket, FileText, Share2, Layers, Shield, Palette } from 'lucide-react';
 
@@ -12,36 +13,47 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   ];
 
   return (
-    <div className="flex min-h-screen bg-[#080808] text-slate-200">
-      <aside className="w-72 border-r border-white/5 bg-[#0a0a0a] p-8 flex flex-col fixed h-full">
+    <div className="flex min-h-screen bg-background text-foreground">
+      {/* Боковая панель */}
+      <aside className="w-72 border-r border-border bg-card p-8 flex flex-col fixed h-full z-50">
         <div className="flex items-center gap-3 mb-12">
-          <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-[0_0_30px_rgba(79,70,229,0.3)]">
-            <Shield className="text-white" size={24}/>
+          <div className="w-10 h-10 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
+            <Shield className="text-primary-foreground" size={24}/>
           </div>
-          <span className="text-xl font-black tracking-tighter text-white">CORE ADMIN</span>
+          <span className="text-xl font-black tracking-tighter text-foreground uppercase italic">CORE ADMIN</span>
         </div>
+        
         <nav className="flex-1 space-y-2">
           {menu.map(item => (
-            <a key={item.name} href={item.href} className="flex items-center gap-4 px-4 py-3 rounded-2xl hover:bg-white/5 transition group">
-              <span className="group-hover:text-indigo-400 transition">{item.icon}</span>
-              <span className="font-medium group-hover:text-white transition">{item.name}</span>
+            <a 
+              key={item.name} 
+              href={item.href} 
+              className="flex items-center gap-4 px-4 py-3 rounded-2xl text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-all group outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span className="group-hover:text-primary transition-colors">{item.icon}</span>
+              <span className="font-bold text-xs uppercase tracking-widest transition-colors">{item.name}</span>
             </a>
           ))}
         </nav>
       </aside>
-			 <div className="flex-1 ml-72">
-			<header className="h-20 border-b border-white/5 flex items-center justify-between px-10 sticky top-0 bg-[#050505]/80 backdrop-blur-md z-40">
-           <div className="text-xs font-bold uppercase tracking-widest text-slate-600">
-             Панель управления / <span className="text-white">Обзор</span>
+
+      {/* Основная область контента */}
+      <div className="flex-1 ml-72 flex flex-col">
+        <header className="h-20 border-b border-border flex items-center justify-between px-10 sticky top-0 bg-background/80 backdrop-blur-md z-40">
+           <div className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+             Панель управления / <span className="text-foreground">Обзор</span>
            </div>
            
            <div className="flex items-center gap-4">
-              <ThemeToggle /> {/* Переключатель в админке */}
-              <div className="w-8 h-8 rounded-full bg-indigo-600 border border-white/10 shadow-lg shadow-indigo-500/20" />
+              <ThemeToggle />
+              <div className="w-8 h-8 rounded-full bg-primary border border-input shadow-lg shadow-primary/20 transition-transform active:scale-95 cursor-pointer" />
            </div>
         </header>
-      <main className="ml-72 flex-1 p-12">{children}</main>
+
+        <main className="p-12 flex-1">
+          {children}
+        </main>
+      </div>
     </div>
-		 </div>
   );
 }

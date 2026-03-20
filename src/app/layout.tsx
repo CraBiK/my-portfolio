@@ -1,6 +1,10 @@
-import { ThemeProvider } from "@/components/theme-provider"
 import { sql } from '@/lib/db';
 import './globals.css';
+import { ThemeProvider } from "@/components/theme-provider"
+import { Geist } from "next/font/google";
+import { cn } from "@/lib/utils";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 export const dynamic = 'force-dynamic';
 
@@ -8,13 +12,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   let cfg: Record<string, string> = {};
 
   try {
-    // Драйвер 'postgres' возвращает результат напрямую как массив
     const settings = await sql`SELECT key, value FROM settings`;
-    
-    // Превращаем массив объектов [{key: '...', value: '...'}] в удобный объект
     cfg = Object.fromEntries(settings.map(s => [s.key, s.value]));
   } catch (e) {
-    console.warn("⚠️ База еще не инициализирована или пуста. Используем дефолты.");
+    console.warn("⚠️ База данных не инициализирована. Используются стандартные настройки.");
   }
 
   const primaryColor = cfg.primary_color || '#6366f1';
@@ -22,31 +23,28 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const fontFamily = cfg.font_family || 'Geist Sans';
 
   return (
-    <html lang="ru">
+    <html lang="ru" suppressHydrationWarning className={cn("font-sans", geist.variable)}>
       <head>
         <style dangerouslySetInnerHTML={{ __html: `
           :root {
             --primary: ${primaryColor};
             --radius: ${borderRadius};
-            --font-main: "${fontFamily}", sans-serif;
           }
-          body { 
-            font-family: var(--font-main); 
-            background: #050505;
-            color: #ffffff;
+          body {
+            font-family: ${fontFamily}, var(--font-sans);
           }
         `}} />
       </head>
-      <body style={{ '--primary': cfg.primary_color || '#6366f1' } as any}>
-			<ThemeProvider
+      <body className="antialiased bg-background text-foreground selection:bg-primary/20 selection:text-primary-foreground min-h-screen">
+        <ThemeProvider
           attribute="class"
-          defaultTheme="dark"
+          defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >
-					{children}
-				</ThemeProvider>
-				</body>
+          {children}
+        </ThemeProvider>
+      </body>
     </html>
   );
 }

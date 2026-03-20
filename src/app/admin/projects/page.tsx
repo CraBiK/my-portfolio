@@ -30,37 +30,71 @@ export default function AdminProjects() {
 
   return (
     <div className="max-w-4xl">
-      <h2 className="text-3xl font-black mb-10 text-white">Project Showcase Manager</h2>
-      <form onSubmit={handleSubmit} className="bg-[#0f0f0f] border border-white/5 p-10 rounded-[2.5rem] space-y-8 shadow-2xl">
+      <h2 className="text-3xl font-black mb-10 text-foreground uppercase italic tracking-tighter">
+        Менеджер проектов
+      </h2>
+      <form onSubmit={handleSubmit} className="bg-card text-card-foreground border border-border p-10 rounded-[2.5rem] space-y-8 shadow-sm">
         <div className="grid grid-cols-2 gap-8">
           <div className="space-y-2">
-            <label className="text-xs uppercase font-bold text-slate-500 ml-2">Название проекта</label>
-            <input name="title" className="w-full bg-black border border-white/10 rounded-2xl p-4 text-white outline-none focus:ring-2 ring-indigo-500" placeholder="E-commerce Platform..." required />
+            <label className="text-[10px] uppercase font-black text-muted-foreground ml-2 tracking-widest">
+              Название проекта
+            </label>
+            <input 
+              name="title" 
+              className="w-full bg-background border border-input rounded-2xl p-4 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background transition-all" 
+              placeholder="Интернет-магазин..." 
+              required 
+            />
           </div>
           <div className="space-y-2">
-            <label className="text-xs uppercase font-bold text-slate-500 ml-2">Стек (через запятую)</label>
-            <input name="stack" className="w-full bg-black border border-white/10 rounded-2xl p-4 text-white outline-none focus:ring-2 ring-indigo-500" placeholder="Next.js, TypeScript, Tailwind..." />
+            <label className="text-[10px] uppercase font-black text-muted-foreground ml-2 tracking-widest">
+              Стек технологий
+            </label>
+            <input 
+              name="stack" 
+              className="w-full bg-background border border-input rounded-2xl p-4 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background transition-all" 
+              placeholder="Next.js, TypeScript, Tailwind..." 
+            />
           </div>
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs uppercase font-bold text-slate-500 ml-2">Описание</label>
-          <textarea name="desc" className="w-full h-32 bg-black border border-white/10 rounded-2xl p-4 text-white outline-none focus:ring-2 ring-indigo-500" placeholder="Расскажите о проекте..."></textarea>
+          <label className="text-[10px] uppercase font-black text-muted-foreground ml-2 tracking-widest">
+            Описание
+          </label>
+          <textarea 
+            name="desc" 
+            className="w-full h-32 bg-background border border-input rounded-2xl p-4 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background transition-all resize-none" 
+            placeholder="Кратко расскажите о проекте..."
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-8">
-          <input name="live" className="bg-black border border-white/10 rounded-2xl p-4 text-white" placeholder="Live Link (https://...)" />
-          <input name="github" className="bg-black border border-white/10 rounded-2xl p-4 text-white" placeholder="GitHub Link" />
+          <input 
+            name="live" 
+            className="bg-background border border-input rounded-2xl p-4 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background transition-all" 
+            placeholder="Демо (https://...)" 
+          />
+          <input 
+            name="github" 
+            className="bg-background border border-input rounded-2xl p-4 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background transition-all" 
+            placeholder="GitHub репозиторий" 
+          />
         </div>
 
-        <div className="border-2 border-dashed border-white/5 rounded-3xl p-10 text-center hover:bg-white/5 transition cursor-pointer relative">
+        <div className="border-2 border-dashed border-border rounded-3xl p-10 text-center hover:bg-muted hover:border-primary/50 transition-all cursor-pointer relative ring-offset-background focus-within:ring-2 focus-within:ring-ring">
           <input name="image" type="file" className="absolute inset-0 opacity-0 cursor-pointer" required />
-          <div className="text-slate-400 font-bold text-lg">Загрузите обложку проекта</div>
-          <div className="text-xs text-slate-600 mt-2">Рекомендуемое разрешение: 1920x1080px</div>
+          <div className="text-foreground font-bold text-lg">Загрузите обложку</div>
+          <div className="text-xs text-muted-foreground mt-2 font-medium uppercase tracking-tighter">
+            Рекомендуется: 1920x1080px
+          </div>
         </div>
 
-        <button disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-5 rounded-2xl font-black text-xl transition-all shadow-[0_10px_40px_rgba(79,70,229,0.3)] disabled:opacity-50">
-          {loading ? 'ПУБЛИКАЦИЯ В ОБЛАКО...' : 'ОПУБЛИКОВАТЬ ПРОЕКТ'}
+        <button 
+          disabled={loading} 
+          className="w-full bg-primary text-primary-foreground hover:opacity-90 py-5 rounded-2xl font-black text-xl uppercase italic transition-all shadow-lg shadow-primary/20 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background outline-none active:scale-[0.98]"
+        >
+          {loading ? 'Публикация...' : 'Опубликовать'}
         </button>
       </form>
     </div>
