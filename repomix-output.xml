@@ -1,0 +1,1919 @@
+This file is a merged representation of a subset of the codebase, containing specifically included files and files not matching ignore patterns, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Only files matching these patterns are included: .
+- Files matching these patterns are excluded: node_modules, .next, public, package-lock.json, *.log, .git
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+.gitignore
+components.json
+eslint.config.mjs
+next.config.ts
+package.json
+postcss.config.mjs
+README.md
+src/app/admin/appearance/page.tsx
+src/app/admin/branding/page.tsx
+src/app/admin/layout.tsx
+src/app/admin/navigation/page.tsx
+src/app/admin/page.tsx
+src/app/admin/pages/page.tsx
+src/app/admin/projects/page.tsx
+src/app/admin/seo/page.tsx
+src/app/admin/skills/page.tsx
+src/app/api/navigation/route.ts
+src/app/api/pages/route.ts
+src/app/api/patch/route.ts
+src/app/api/projects/route.ts
+src/app/api/settings/route.ts
+src/app/api/setup/route.ts
+src/app/api/skills/route.ts
+src/app/api/upload/route.ts
+src/app/favicon.ico
+src/app/globals.css
+src/app/layout.tsx
+src/app/page.tsx
+src/components/Header.tsx
+src/components/SkillsGrid.tsx
+src/components/theme-provider.tsx
+src/components/ThemeToggle.tsx
+src/lib/db.ts
+src/lib/utils.ts
+tsconfig.json
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="src/app/api/navigation/route.ts">
+import { sql } from '@/lib/db';
+import { NextResponse } from 'next/server';
+
+// Получение списка меню
+export async function GET() {
+  const nav = await sql`SELECT * FROM navigation ORDER BY order_index ASC`;
+  return NextResponse.json(nav);
+}
+
+// Добавление нового пункта
+export async function POST(req: Request) {
+  try {
+    const { label, url } = await req.json();
+    
+    // Считаем текущее кол-во элементов, чтобы выставить order_index в конец
+    const countRes = await sql`SELECT count(*) FROM navigation`;
+    const nextOrder = parseInt(countRes[0].count) + 1;
+
+    await sql`
+      INSERT INTO navigation (label, url, order_index) 
+      VALUES (${label}, ${url}, ${nextOrder})
+    `;
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Nav API Error:", error);
+    return NextResponse.json({ error: "Ошибка при сохранении" }, { status: 500 });
+  }
+}
+export async function PATCH(req: Request) {
+  try {
+    const { items } = await req.json(); // Ожидаем массив [{id, order_index}, ...]
+    
+    // Выполняем транзакцию обновления для каждого элемента
+    for (const item of items) {
+      await sql`
+        UPDATE navigation 
+        SET order_index = ${item.order_index} 
+        WHERE id = ${item.id}
+      `;
+    }
+    
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json({ error: "Ошибка сортировки" }, { status: 500 });
+  }
+}
+// Удаление пункта
+export async function DELETE(req: Request) {
+  const { id } = await req.json();
+  await sql`DELETE FROM navigation WHERE id = ${id}`;
+  return NextResponse.json({ success: true });
+}
+</file>
+
+<file path="components.json">
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "radix-nova",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "src/app/globals.css",
+    "baseColor": "neutral",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "iconLibrary": "lucide",
+  "rtl": false,
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui",
+    "lib": "@/lib",
+    "hooks": "@/hooks"
+  },
+  "menuColor": "default",
+  "menuAccent": "subtle",
+  "registries": {}
+}
+</file>
+
+<file path="eslint.config.mjs">
+import { defineConfig, globalIgnores } from "eslint/config";
+import nextVitals from "eslint-config-next/core-web-vitals";
+import nextTs from "eslint-config-next/typescript";
+
+const eslintConfig = defineConfig([
+  ...nextVitals,
+  ...nextTs,
+  // Override default ignores of eslint-config-next.
+  globalIgnores([
+    // Default ignores of eslint-config-next:
+    ".next/**",
+    "out/**",
+    "build/**",
+    "next-env.d.ts",
+  ]),
+]);
+
+export default eslintConfig;
+</file>
+
+<file path="next.config.ts">
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  /* config options here */
+  reactCompiler: true,
+};
+
+export default nextConfig;
+</file>
+
+<file path="postcss.config.mjs">
+const config = {
+  plugins: {
+    "@tailwindcss/postcss": {},
+  },
+};
+
+export default config;
+</file>
+
+<file path="README.md">
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+
+## Getting Started
+
+First, run the development server:
+
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+
+## Learn More
+
+To learn more about Next.js, take a look at the following resources:
+
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+</file>
+
+<file path="src/app/api/pages/route.ts">
+import { sql } from '@/lib/db';
+import { NextResponse } from 'next/server';
+
+export async function GET() {
+  const pages = await sql`SELECT * FROM pages ORDER BY title ASC`;
+  return NextResponse.json(pages);
+}
+
+export async function POST(req: Request) {
+  const { title, slug, content } = await req.json();
+  await sql`
+    INSERT INTO pages (title, slug, content) 
+    VALUES (${title}, ${slug}, ${content})
+    ON CONFLICT (slug) DO UPDATE SET title = ${title}, content = ${content}
+  `;
+  return NextResponse.json({ success: true });
+}
+</file>
+
+<file path="src/app/api/patch/route.ts">
+import { sql } from '@/lib/db';
+import { NextResponse } from 'next/server';
+
+export async function GET() {
+  try {
+    // 1. Принудительно создаем таблицу messages, если её нет
+    await sql`
+      CREATE TABLE IF NOT EXISTS messages (
+        id SERIAL PRIMARY KEY,
+        name TEXT,
+        email TEXT,
+        message TEXT,
+        is_read BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+
+    // 2. Если таблица есть, но колонки нет — добавляем её
+    await sql`
+      ALTER TABLE messages 
+      ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT false;
+    `;
+
+    return NextResponse.json({ success: true, message: "Колонка is_read успешно добавлена или уже существует!" });
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 500 });
+  }
+}
+</file>
+
+<file path="src/app/api/settings/route.ts">
+import { sql } from '@vercel/postgres';
+import { NextResponse } from 'next/server';
+
+export async function POST(request: Request) {
+  const { key, value } = await request.json();
+  // Используем UPSERT (обновить если есть, иначе создать)
+  await sql`
+    INSERT INTO settings (key, value) 
+    VALUES (${key}, ${value}) 
+    ON CONFLICT (key) DO UPDATE SET value = ${value}
+  `;
+  return NextResponse.json({ success: true });
+}
+</file>
+
+<file path="src/app/api/skills/route.ts">
+import postgres from 'postgres';
+import { NextResponse } from 'next/server';
+
+const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
+
+export async function GET() {
+  const skills = await sql`SELECT * FROM skills ORDER BY category, level DESC`;
+  return NextResponse.json(skills);
+}
+
+export async function POST(req: Request) {
+  const { name, category, level, icon } = await req.json();
+  await sql`
+    INSERT INTO skills (name, category, level, icon) 
+    VALUES (${name}, ${category}, ${level}, ${icon})
+  `;
+  return NextResponse.json({ success: true });
+}
+</file>
+
+<file path="src/app/api/upload/route.ts">
+import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
+import { NextResponse } from 'next/server';
+
+export async function POST(request: Request): Promise<NextResponse> {
+  const body = (await request.json()) as HandleUploadBody;
+
+  try {
+    const jsonResponse = await handleUpload({
+      body,
+      request,
+      onBeforeGenerateToken: async (pathname) => {
+        // Здесь можно добавить проверку авторизации админа
+        return {
+          allowedContentTypes: ['image/jpeg', 'image/png', 'image/gif'],
+          tokenPayload: JSON.stringify({}),
+        };
+      },
+      onUploadCompleted: async ({ blob, tokenPayload }) => {
+        console.log('Загрузка завершена!', blob.url);
+      },
+    });
+
+    return NextResponse.json(jsonResponse);
+  } catch (error) {
+    return NextResponse.json({ error: (error as Error).message }, { status: 400 });
+  }
+}
+</file>
+
+<file path="src/lib/db.ts">
+import postgres from 'postgres';
+
+// Оптимизированный коннект для Serverless среды
+const connectionString = process.env.POSTGRES_URL!;
+export const sql = postgres(connectionString, { ssl: 'require' });
+
+// Хелпер для получения одной настройки
+export async function getSetting(key: string, defaultValue: string = '') {
+  const [setting] = await sql`SELECT value FROM settings WHERE key = ${key}`;
+  return setting?.value || defaultValue;
+}
+</file>
+
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
+  ],
+  "exclude": ["node_modules"]
+}
+</file>
+
+<file path=".gitignore">
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+.vercel
+.env*.local
+</file>
+
+<file path="src/app/admin/appearance/page.tsx">
+'use client';
+import { useState } from 'react';
+
+export default function AppearancePage() {
+  const save = async (key: string, value: string) => {
+    await fetch('/api/settings', { method: 'POST', body: JSON.stringify({ key, value }) });
+    alert(`Настройка обновлена: ${key}`);
+  };
+
+  return (
+    <div className="max-w-5xl">
+      <h1 className="text-4xl font-black text-foreground mb-12 tracking-tighter italic uppercase">
+        Внешний вид
+      </h1>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+        {/* Логотип */}
+        <section className="bg-card text-card-foreground border border-border p-8 rounded-[2rem] space-y-6 shadow-sm">
+          <h3 className="text-xl font-bold text-foreground">Логотип сайта</h3>
+          <div className="p-4 bg-muted rounded-2xl border border-input min-h-[100px] flex items-center justify-center">
+             {/* Превью лого */}
+             <span className="text-xs text-muted-foreground italic">Предпросмотр</span>
+          </div>
+          <textarea 
+            className="w-full h-40 bg-background border border-input rounded-2xl p-4 font-mono text-foreground text-xs focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none transition-all ring-offset-background"
+            placeholder="Вставьте SVG-код логотипа..."
+            onBlur={(e) => save('logo_data', e.target.value)}
+          />
+        </section>
+
+        {/* Цвета и Тема */}
+        <section className="bg-card text-card-foreground border border-border p-8 rounded-[2rem] space-y-8 shadow-sm">
+          <h3 className="text-xl font-bold text-foreground">Дизайн-система</h3>
+          <div>
+            <label className="text-xs font-bold text-muted-foreground uppercase mb-4 block tracking-wider">
+              Акцентный цвет
+            </label>
+            <div className="flex flex-wrap gap-4">
+              {['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#ffffff'].map(c => (
+                <button 
+                  key={c} 
+                  onClick={() => save('primary_color', c)} 
+                  className="w-12 h-12 rounded-2xl border-2 border-border hover:border-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none transition-all ring-offset-background hover:scale-105 active:scale-95 shadow-sm" 
+                  style={{backgroundColor: c}} 
+                />
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-bold text-muted-foreground uppercase mb-4 block tracking-wider">
+              Системный шрифт
+            </label>
+            <select 
+              className="w-full bg-background border border-input rounded-xl p-4 text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none transition-all ring-offset-background" 
+              onChange={(e) => save('font_family', e.target.value)}
+            >
+              <option value="Geist Sans">Geist Sans (Vercel)</option>
+              <option value="Inter">Inter (Стандартный)</option>
+              <option value="JetBrains Mono">JetBrains Mono (Для кода)</option>
+            </select>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/admin/navigation/page.tsx">
+'use client';
+import { useState, useEffect } from 'react';
+import { Plus, Trash2, GripVertical } from 'lucide-react';
+import { 
+  DndContext, 
+  closestCenter, 
+  KeyboardSensor, 
+  PointerSensor, 
+  useSensor, 
+  useSensors,
+  DragEndEvent 
+} from '@dnd-kit/core';
+import { 
+  arrayMove, 
+  SortableContext, 
+  sortableKeyboardCoordinates, 
+  verticalListSortingStrategy,
+  useSortable 
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+// --- КОМПОНЕНТ СОРТИРУЕМОГО ПУНКТА ---
+function SortableNavItem({ item, onDelete }: { item: any, onDelete: (id: number) => void }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: item.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 0,
+  };
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      style={style}
+      className={`p-6 bg-card text-card-foreground border border-border rounded-3xl flex items-center gap-6 group transition-all shadow-sm ${isDragging ? 'opacity-50 scale-[1.02] border-primary shadow-xl' : 'hover:border-primary/30'}`}
+    >
+       {/* Хэндл для перетаскивания */}
+       <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-2 -ml-2 hover:bg-muted rounded-xl transition-colors">
+          <GripVertical className="text-muted-foreground/30 group-hover:text-muted-foreground transition-colors" />
+       </div>
+
+       <div className="flex-1">
+          <div className="text-foreground font-bold uppercase tracking-tight text-sm">{item.label}</div>
+          <div className="text-[10px] text-muted-foreground font-mono opacity-60 italic">{item.url}</div>
+       </div>
+
+       <button 
+         onClick={() => onDelete(item.id)}
+         className="text-muted-foreground hover:text-destructive transition-all p-2 rounded-lg hover:bg-destructive/10 outline-none focus-visible:ring-2 focus-visible:ring-destructive"
+       >
+         <Trash2 size={18}/>
+       </button>
+    </div>
+  );
+}
+
+// --- ОСНОВНАЯ СТРАНИЦА ---
+export default function NavManager() {
+  const [items, setItems] = useState<any[]>([]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const loadNav = () => fetch('/api/navigation').then(res => res.json()).then(setItems);
+  useEffect(() => { loadNav(); }, []);
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      const oldIndex = items.findIndex((i) => i.id === active.id);
+      const newIndex = items.findIndex((i) => i.id === over.id);
+      
+      const newOrder = arrayMove(items, oldIndex, newIndex);
+      setItems(newOrder); // Мгновенное обновление UI
+
+      // Сохраняем новый порядок в БД
+      const updateData = newOrder.map((item, index) => ({
+        id: item.id,
+        order_index: index + 1
+      }));
+
+      await fetch('/api/navigation', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: updateData })
+      });
+    }
+  };
+
+  const addLink = async () => {
+    const label = prompt('Название:');
+    const url = prompt('URL (напр. /about):');
+    if(label && url) {
+      await fetch('/api/navigation', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label, url }) 
+      });
+      loadNav();
+    }
+  };
+
+  const deleteLink = async (id: number) => {
+    if (confirm('Удалить пункт?')) {
+      await fetch('/api/navigation', { 
+        method: 'DELETE', 
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }) 
+      });
+      loadNav();
+    }
+  };
+
+  return (
+    <div className="max-w-4xl">
+      <div className="flex justify-between items-center mb-12">
+        <h2 className="text-3xl font-black text-foreground uppercase italic tracking-tighter">Навигация</h2>
+        <button onClick={addLink} className="bg-primary text-primary-foreground px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:opacity-90 transition-all shadow-lg shadow-primary/20">
+          <Plus size={18}/> Добавить пункт
+        </button>
+      </div>
+      
+      <DndContext 
+        sensors={sensors} 
+        collisionDetection={closestCenter} 
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={items} strategy={verticalListSortingStrategy}>
+          <div className="space-y-3">
+            {items.map((item) => (
+              <SortableNavItem key={item.id} item={item} onDelete={deleteLink} />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/admin/pages/page.tsx">
+'use client';
+import { useState, useEffect } from 'react';
+import { FileText, Plus, ExternalLink, Trash2 } from 'lucide-react';
+
+export default function AdminPages() {
+  const [pages, setPages] = useState([]);
+  
+  const loadPages = () => fetch('/api/pages').then(res => res.json()).then(setPages);
+  useEffect(() => { loadPages(); }, []);
+
+  const createPage = async () => {
+    const title = prompt('Заголовок страницы:');
+    const slug = prompt('URL-путь (например, about):');
+    if (title && slug) {
+      await fetch('/api/pages', { 
+        method: 'POST', 
+        body: JSON.stringify({ title, slug, content: '{"blocks": []}' }) 
+      });
+      loadPages();
+    }
+  };
+
+  return (
+    <div className="max-w-5xl mx-auto">
+      <header className="flex justify-between items-center mb-10">
+        <h1 className="text-3xl font-black text-foreground uppercase italic tracking-tighter">
+          Страницы сайта
+        </h1>
+        <button 
+          onClick={createPage} 
+          className="bg-primary text-primary-foreground px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:opacity-90 transition-all shadow-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none ring-offset-background"
+        >
+          <Plus size={18}/> Создать страницу
+        </button>
+      </header>
+
+      <div className="grid gap-4">
+        {pages.map((page: any) => (
+          <div 
+            key={page.id} 
+            className="bg-card text-card-foreground border border-border p-6 rounded-3xl flex items-center justify-between group hover:border-primary/30 transition-all shadow-sm"
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-muted rounded-xl border border-input text-muted-foreground">
+                <FileText size={20} />
+              </div>
+              <div>
+                <h3 className="text-foreground font-bold">{page.title}</h3>
+                <span className="text-xs text-muted-foreground font-mono">/{page.slug}</span>
+              </div>
+            </div>
+            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <a 
+                href={`/${page.slug}`} 
+                target="_blank" 
+                className="p-2 text-muted-foreground hover:text-primary transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
+              >
+                <ExternalLink size={18}/>
+              </a>
+              <button 
+                className="p-2 text-muted-foreground hover:text-destructive transition-colors outline-none focus-visible:ring-2 focus-visible:ring-destructive rounded-lg"
+              >
+                <Trash2 size={18}/>
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/admin/projects/page.tsx">
+'use client';
+import { useState } from 'react';
+import { upload } from '@vercel/blob/client';
+
+export default function AdminProjects() {
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setLoading(true);
+    const fd = new FormData(e.currentTarget);
+    const file = fd.get('image') as File;
+
+    const blob = await upload(file.name, file, { access: 'public', handleUploadUrl: '/api/upload' });
+
+    await fetch('/api/projects', {
+      method: 'POST',
+      body: JSON.stringify({
+        title: fd.get('title'),
+        image_url: blob.url,
+        description: fd.get('desc'),
+        tech_stack: (fd.get('stack') as string).split(','),
+        live_url: fd.get('live'),
+        github_url: fd.get('github'),
+      })
+    });
+    alert('Проект опубликован!');
+    setLoading(false);
+  }
+
+  return (
+    <div className="max-w-4xl">
+      <h2 className="text-3xl font-black mb-10 text-foreground uppercase italic tracking-tighter">
+        Менеджер проектов
+      </h2>
+      <form onSubmit={handleSubmit} className="bg-card text-card-foreground border border-border p-10 rounded-[2.5rem] space-y-8 shadow-sm">
+        <div className="grid grid-cols-2 gap-8">
+          <div className="space-y-2">
+            <label className="text-[10px] uppercase font-black text-muted-foreground ml-2 tracking-widest">
+              Название проекта
+            </label>
+            <input 
+              name="title" 
+              className="w-full bg-background border border-input rounded-2xl p-4 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background transition-all" 
+              placeholder="Интернет-магазин..." 
+              required 
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] uppercase font-black text-muted-foreground ml-2 tracking-widest">
+              Стек технологий
+            </label>
+            <input 
+              name="stack" 
+              className="w-full bg-background border border-input rounded-2xl p-4 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background transition-all" 
+              placeholder="Next.js, TypeScript, Tailwind..." 
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-[10px] uppercase font-black text-muted-foreground ml-2 tracking-widest">
+            Описание
+          </label>
+          <textarea 
+            name="desc" 
+            className="w-full h-32 bg-background border border-input rounded-2xl p-4 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background transition-all resize-none" 
+            placeholder="Кратко расскажите о проекте..."
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-8">
+          <input 
+            name="live" 
+            className="bg-background border border-input rounded-2xl p-4 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background transition-all" 
+            placeholder="Демо (https://...)" 
+          />
+          <input 
+            name="github" 
+            className="bg-background border border-input rounded-2xl p-4 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background transition-all" 
+            placeholder="GitHub репозиторий" 
+          />
+        </div>
+
+        <div className="border-2 border-dashed border-border rounded-3xl p-10 text-center hover:bg-muted hover:border-primary/50 transition-all cursor-pointer relative ring-offset-background focus-within:ring-2 focus-within:ring-ring">
+          <input name="image" type="file" className="absolute inset-0 opacity-0 cursor-pointer" required />
+          <div className="text-foreground font-bold text-lg">Загрузите обложку</div>
+          <div className="text-xs text-muted-foreground mt-2 font-medium uppercase tracking-tighter">
+            Рекомендуется: 1920x1080px
+          </div>
+        </div>
+
+        <button 
+          disabled={loading} 
+          className="w-full bg-primary text-primary-foreground hover:opacity-90 py-5 rounded-2xl font-black text-xl uppercase italic transition-all shadow-lg shadow-primary/20 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background outline-none active:scale-[0.98]"
+        >
+          {loading ? 'Публикация...' : 'Опубликовать'}
+        </button>
+      </form>
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/admin/seo/page.tsx">
+'use client';
+
+export default function SeoManager() {
+  const save = async (key: string, value: string) => {
+    await fetch('/api/settings', { method: 'POST', body: JSON.stringify({ key, value }) });
+  };
+
+  return (
+    <div className="max-w-4xl space-y-10">
+      <h2 className="text-3xl font-black text-foreground uppercase italic tracking-tighter">
+        SEO и глобальные скрипты
+      </h2>
+      
+      <div className="bg-card text-card-foreground border border-border p-10 rounded-[2.5rem] space-y-8 shadow-sm">
+        <div className="space-y-3">
+          <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-2">
+            Google Analytics ID
+          </label>
+          <input 
+            className="w-full bg-background border border-input rounded-2xl p-4 text-primary font-mono outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background transition-all" 
+            placeholder="G-XXXXXXXX" 
+            onBlur={(e) => save('ga_id', e.target.value)} 
+          />
+        </div>
+        
+        <div className="space-y-3">
+          <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-2">
+            Глобальное мета-описание
+          </label>
+          <textarea 
+            className="w-full bg-background border border-input rounded-2xl p-4 text-foreground h-32 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background transition-all resize-none" 
+            placeholder="Введите описание для поисковых систем..."
+            onBlur={(e) => save('seo_description', e.target.value)} 
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/admin/skills/page.tsx">
+'use client';
+import { useState, useEffect } from 'react';
+import { Cpu, Plus, Zap, Code2, Database, Terminal } from 'lucide-react';
+
+export default function AdminSkills() {
+  const [skills, setSkills] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const categories = ['Frontend', 'Backend', 'DevOps', 'Инструменты', 'Дизайн'];
+
+  const loadSkills = () => fetch('/api/skills').then(res => res.json()).then(setSkills);
+  useEffect(() => { loadSkills(); }, []);
+
+  async function addSkill(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setLoading(true);
+    const fd = new FormData(e.currentTarget);
+    
+    await fetch('/api/skills', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: fd.get('name'),
+        category: fd.get('category'),
+        level: parseInt(fd.get('level') as string),
+        icon: fd.get('icon') || 'Terminal'
+      })
+    });
+    setLoading(false);
+    loadSkills();
+  }
+
+  return (
+    <div className="max-w-6xl mx-auto">
+      <header className="mb-12 flex justify-between items-end">
+        <div>
+          <h1 className="text-4xl font-black text-foreground tracking-tighter uppercase italic">
+            Матрица навыков
+          </h1>
+          <p className="text-muted-foreground mt-2 font-medium">Визуализация вашего технологического арсенала</p>
+        </div>
+        <div className="text-primary font-mono text-sm font-bold">Всего: {skills.length}</div>
+      </header>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+        {/* Форма добавления */}
+        <section className="bg-card text-card-foreground border border-border p-8 rounded-[2.5rem] h-fit sticky top-10 shadow-sm">
+          <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-foreground">
+            <Plus className="text-primary" size={20}/> Добавить навык
+          </h2>
+          <form onSubmit={addSkill} className="space-y-5">
+            <input 
+              name="name" 
+              placeholder="Название (напр. React)" 
+              className="w-full bg-background border border-input rounded-xl p-4 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background transition-all" 
+              required 
+            />
+            <select 
+              name="category" 
+              className="w-full bg-background border border-input rounded-xl p-4 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background transition-all"
+            >
+              {categories.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <div className="space-y-3">
+              <div className="flex justify-between text-[10px] font-black uppercase text-muted-foreground tracking-widest px-1">
+                <span>Уровень владения</span>
+                <span className="text-primary">Мастерство</span>
+              </div>
+              <input 
+                name="level" 
+                type="range" 
+                min="0" 
+                max="100" 
+                className="w-full accent-primary bg-muted rounded-lg appearance-none cursor-pointer h-2" 
+              />
+            </div>
+            <input 
+              name="icon" 
+              placeholder="Иконка (Lucide: Database, Code2...)" 
+              className="w-full bg-background border border-input rounded-xl p-4 text-muted-foreground font-mono text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background transition-all" 
+            />
+            <button 
+              disabled={loading} 
+              className="w-full bg-primary text-primary-foreground hover:opacity-90 py-4 rounded-2xl font-black uppercase italic transition-all shadow-lg shadow-primary/20 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background outline-none active:scale-[0.98]"
+            >
+              {loading ? 'Сохранение...' : 'Добавить'}
+            </button>
+          </form>
+        </section>
+
+        {/* Список навыков */}
+        <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {skills.map((skill: any) => (
+            <div 
+              key={skill.id} 
+              className="bg-card text-card-foreground border border-border p-6 rounded-3xl group hover:border-primary/50 transition-all duration-500 shadow-sm"
+            >
+              <div className="flex justify-between items-start mb-6">
+                <div className="p-3 bg-muted rounded-2xl border border-input group-hover:scale-110 group-hover:bg-accent transition-all duration-300">
+                  <Terminal size={24} className="text-primary" />
+                </div>
+                <span className="text-[10px] font-black px-3 py-1 bg-primary/10 text-primary rounded-full uppercase tracking-widest">
+                  {skill.category}
+                </span>
+              </div>
+              <h3 className="text-lg font-bold text-foreground mb-4">{skill.name}</h3>
+              <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-primary shadow-[0_0_12px_rgba(var(--primary),0.4)] transition-all duration-1000 ease-out" 
+                  style={{ width: `${skill.level}%` }}
+                />
+              </div>
+              <div className="mt-2 text-right text-[10px] font-mono text-muted-foreground uppercase font-bold tracking-tighter">
+                Опыт: {skill.level}%
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/api/projects/route.ts">
+import { sql } from '@vercel/postgres';
+import { NextResponse } from 'next/server';
+
+// Получение списка проектов
+export async function GET() {
+  // Просто возвращаем результат запроса напрямую
+  const projects = await sql`SELECT * FROM projects ORDER BY created_at DESC`;
+  return NextResponse.json(projects);
+}
+
+// Добавление нового проекта
+export async function POST(request: Request) {
+  const { title, image_url } = await request.json();
+  await sql`INSERT INTO projects (title, image_url) VALUES (${title}, ${image_url})`;
+  return NextResponse.json({ success: true });
+}
+</file>
+
+<file path="src/app/globals.css">
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+
+
+:root {
+  --background: oklch(0.9383 0.0042 236.4993);
+  --foreground: oklch(0.3211 0 0);
+  --card: oklch(1.0000 0 0);
+  --card-foreground: oklch(0.3211 0 0);
+  --popover: oklch(1.0000 0 0);
+  --popover-foreground: oklch(0.3211 0 0);
+  --primary: oklch(0.6397 0.1720 36.4421);
+  --primary-foreground: oklch(1.0000 0 0);
+  --secondary: oklch(0.9670 0.0029 264.5419);
+  --secondary-foreground: oklch(0.4461 0.0263 256.8018);
+  --muted: oklch(0.9846 0.0017 247.8389);
+  --muted-foreground: oklch(0.5510 0.0234 264.3637);
+  --accent: oklch(0.9119 0.0222 243.8174);
+  --accent-foreground: oklch(0.3791 0.1378 265.5222);
+  --destructive: oklch(0.6368 0.2078 25.3313);
+  --destructive-foreground: oklch(1.0000 0 0);
+  --border: oklch(0.9022 0.0052 247.8822);
+  --input: oklch(0.9700 0.0029 264.5420);
+  --ring: oklch(0.6397 0.1720 36.4421);
+  --chart-1: oklch(0.7156 0.0605 248.6845);
+  --chart-2: oklch(0.7875 0.0917 35.9616);
+  --chart-3: oklch(0.5778 0.0759 254.1573);
+  --chart-4: oklch(0.5016 0.0849 259.4902);
+  --chart-5: oklch(0.4241 0.0952 264.0306);
+  --sidebar: oklch(0.9030 0.0046 258.3257);
+  --sidebar-foreground: oklch(0.3211 0 0);
+  --sidebar-primary: oklch(0.6397 0.1720 36.4421);
+  --sidebar-primary-foreground: oklch(1.0000 0 0);
+  --sidebar-accent: oklch(0.9119 0.0222 243.8174);
+  --sidebar-accent-foreground: oklch(0.3791 0.1378 265.5222);
+  --sidebar-border: oklch(0.9276 0.0058 264.5313);
+  --sidebar-ring: oklch(0.6397 0.1720 36.4421);
+  --font-sans: Inter, sans-serif;
+  --font-serif: Source Serif 4, serif;
+  --font-mono: JetBrains Mono, monospace;
+  --radius: 0.75rem;
+  --shadow-x: 0px;
+  --shadow-y: 1px;
+  --shadow-blur: 3px;
+  --shadow-spread: 0px;
+  --shadow-opacity: 0.1;
+  --shadow-color: hsl(0 0% 0%);
+  --shadow-2xs: 0px 1px 3px 0px hsl(0 0% 0% / 0.05);
+  --shadow-xs: 0px 1px 3px 0px hsl(0 0% 0% / 0.05);
+  --shadow-sm: 0px 1px 3px 0px hsl(0 0% 0% / 0.10), 0px 1px 2px -1px hsl(0 0% 0% / 0.10);
+  --shadow: 0px 1px 3px 0px hsl(0 0% 0% / 0.10), 0px 1px 2px -1px hsl(0 0% 0% / 0.10);
+  --shadow-md: 0px 1px 3px 0px hsl(0 0% 0% / 0.10), 0px 2px 4px -1px hsl(0 0% 0% / 0.10);
+  --shadow-lg: 0px 1px 3px 0px hsl(0 0% 0% / 0.10), 0px 4px 6px -1px hsl(0 0% 0% / 0.10);
+  --shadow-xl: 0px 1px 3px 0px hsl(0 0% 0% / 0.10), 0px 8px 10px -1px hsl(0 0% 0% / 0.10);
+  --shadow-2xl: 0px 1px 3px 0px hsl(0 0% 0% / 0.25);
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
+}
+
+.dark {
+  --background: oklch(0.2598 0.0306 262.6666);
+  --foreground: oklch(0.9219 0 0);
+  --card: oklch(0.3106 0.0301 268.6365);
+  --card-foreground: oklch(0.9219 0 0);
+  --popover: oklch(0.2900 0.0249 268.3986);
+  --popover-foreground: oklch(0.9219 0 0);
+  --primary: oklch(0.6397 0.1720 36.4421);
+  --primary-foreground: oklch(1.0000 0 0);
+  --secondary: oklch(0.3095 0.0266 266.7132);
+  --secondary-foreground: oklch(0.9219 0 0);
+  --muted: oklch(0.3095 0.0266 266.7132);
+  --muted-foreground: oklch(0.7155 0 0);
+  --accent: oklch(0.3380 0.0589 267.5867);
+  --accent-foreground: oklch(0.8823 0.0571 254.1284);
+  --destructive: oklch(0.6368 0.2078 25.3313);
+  --destructive-foreground: oklch(1.0000 0 0);
+  --border: oklch(0.3843 0.0301 269.7337);
+  --input: oklch(0.3843 0.0301 269.7337);
+  --ring: oklch(0.6397 0.1720 36.4421);
+  --chart-1: oklch(0.7156 0.0605 248.6845);
+  --chart-2: oklch(0.7693 0.0876 34.1875);
+  --chart-3: oklch(0.5778 0.0759 254.1573);
+  --chart-4: oklch(0.5016 0.0849 259.4902);
+  --chart-5: oklch(0.4241 0.0952 264.0306);
+  --sidebar: oklch(0.3100 0.0283 267.7408);
+  --sidebar-foreground: oklch(0.9219 0 0);
+  --sidebar-primary: oklch(0.6397 0.1720 36.4421);
+  --sidebar-primary-foreground: oklch(1.0000 0 0);
+  --sidebar-accent: oklch(0.3380 0.0589 267.5867);
+  --sidebar-accent-foreground: oklch(0.8823 0.0571 254.1284);
+  --sidebar-border: oklch(0.3843 0.0301 269.7337);
+  --sidebar-ring: oklch(0.6397 0.1720 36.4421);
+  --font-sans: Inter, sans-serif;
+  --font-serif: Source Serif 4, serif;
+  --font-mono: JetBrains Mono, monospace;
+  --radius: 0.75rem;
+  --shadow-x: 0px;
+  --shadow-y: 1px;
+  --shadow-blur: 3px;
+  --shadow-spread: 0px;
+  --shadow-opacity: 0.1;
+  --shadow-color: hsl(0 0% 0%);
+  --shadow-2xs: 0px 1px 3px 0px hsl(0 0% 0% / 0.05);
+  --shadow-xs: 0px 1px 3px 0px hsl(0 0% 0% / 0.05);
+  --shadow-sm: 0px 1px 3px 0px hsl(0 0% 0% / 0.10), 0px 1px 2px -1px hsl(0 0% 0% / 0.10);
+  --shadow: 0px 1px 3px 0px hsl(0 0% 0% / 0.10), 0px 1px 2px -1px hsl(0 0% 0% / 0.10);
+  --shadow-md: 0px 1px 3px 0px hsl(0 0% 0% / 0.10), 0px 2px 4px -1px hsl(0 0% 0% / 0.10);
+  --shadow-lg: 0px 1px 3px 0px hsl(0 0% 0% / 0.10), 0px 4px 6px -1px hsl(0 0% 0% / 0.10);
+  --shadow-xl: 0px 1px 3px 0px hsl(0 0% 0% / 0.10), 0px 8px 10px -1px hsl(0 0% 0% / 0.10);
+  --shadow-2xl: 0px 1px 3px 0px hsl(0 0% 0% / 0.25);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-serif: var(--font-serif);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --shadow-2xs: var(--shadow-2xs);
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow: var(--shadow);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-2xl: var(--shadow-2xl);
+}
+
+@layer base {
+
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+  }
+	  body {
+   
+    @apply bg-background text-foreground;
+  }
+}
+</file>
+
+<file path="src/components/Header.tsx">
+import { sql } from '@/lib/db';
+import { ThemeToggle } from "./ThemeToggle";
+
+export default async function Header() {
+  // Получаем логотип и меню из базы
+  const [nav, logoSetting] = await Promise.all([
+    sql`SELECT * FROM navigation ORDER BY order_index ASC`,
+    sql`SELECT value FROM settings WHERE key = 'logo_data' LIMIT 1`
+  ]);
+
+  const logoData = logoSetting[0]?.value || "ВЕБ.КОДЕР";
+
+  return (
+    <header className="fixed top-0 w-full z-50 border-b border-border bg-background/80 backdrop-blur-xl text-foreground transition-all duration-300">
+      <div className="max-w-7xl mx-auto px-8 h-20 flex justify-between items-center">
+        {/* ЛОГОТИП (SVG или Текст) */}
+        <div 
+          className="h-8 flex items-center gap-2 font-black tracking-tighter text-primary uppercase italic"
+          dangerouslySetInnerHTML={{ __html: logoData.startsWith('<svg') ? logoData : `<span>${logoData}</span>` }}
+        />
+
+        {/* НАВИГАЦИЯ */}
+        <nav className="hidden md:flex gap-10 items-center">
+          {nav.map((item) => (
+            <a 
+              key={item.id} 
+              href={item.url} 
+              className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground hover:text-primary transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+            >
+              {item.label}
+            </a>
+          ))}
+          
+          {/* ПЕРЕКЛЮЧАТЕЛЬ ТЕМЫ */}
+          <ThemeToggle />
+        </nav>
+
+        {/* ПАНЕЛЬ УПРАВЛЕНИЯ (Мобильная версия) */}
+        <a href="/admin" className="md:hidden text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 hover:text-primary transition-all">
+          Админ
+        </a>
+      </div>
+    </header>
+  );
+}
+</file>
+
+<file path="src/components/theme-provider.tsx">
+'use client'
+
+import * as React from "react"
+import { ThemeProvider as NextThemesProvider } from "next-themes"
+
+export function ThemeProvider({
+  children,
+  ...props
+}: React.ComponentProps<typeof NextThemesProvider>) {
+  return <NextThemesProvider {...props}>{children}</NextThemesProvider>
+}
+</file>
+
+<file path="src/components/ThemeToggle.tsx">
+'use client'
+import { Moon, Sun } from "lucide-react"
+import { useTheme } from "next-themes"
+
+export function ThemeToggle() {
+  const { theme, setTheme } = useTheme()
+
+  return (
+    <button
+      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+      className="relative p-2 rounded-xl bg-background border border-border hover:bg-accent hover:text-accent-foreground transition-all shadow-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background outline-none active:scale-95"
+      aria-label="Переключить тему"
+    >
+      <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0 text-foreground" />
+      <Moon className="absolute top-2 left-2 h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100 text-foreground" />
+      <span className="sr-only">Переключить тему</span>
+    </button>
+  )
+}
+</file>
+
+<file path="src/lib/utils.ts">
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+</file>
+
+<file path="src/app/admin/branding/page.tsx">
+'use client';
+import { useState } from 'react';
+import { 
+  Palette, 
+  LayoutDashboard, 
+  Rocket, 
+  FileText, 
+  Layers, 
+  Shield, 
+  Settings 
+} from 'lucide-react';
+
+export default function BrandingPage() {
+  const [logoType, setLogoType] = useState('svg');
+
+  const save = async (key: string, value: string) => {
+    await fetch('/api/settings', { method: 'POST', body: JSON.stringify({ key, value }) });
+    alert(`Настройка сохранена: ${key}`);
+  };
+
+  return (
+    <div className="max-w-5xl">
+      <header className="mb-12">
+        <h1 className="text-4xl font-black text-foreground mb-2 tracking-tight uppercase italic">Брендинг и дизайн</h1>
+        <p className="text-muted-foreground font-medium">Управление визуальным стилем вашего портфолио</p>
+      </header>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+        {/* Цвета */}
+        <div className="lg:col-span-2 space-y-8">
+          <section className="bg-card text-card-foreground border border-border p-8 rounded-[2rem] shadow-sm">
+            <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-foreground">
+              <Palette className="text-primary" size={20}/> Акцентные цвета
+            </h2>
+            <div className="flex flex-wrap gap-6">
+              {['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#ef4444', '#ffffff'].map(color => (
+                <button 
+                  key={color} 
+                  onClick={() => save('primary_color', color)}
+                  className="w-16 h-16 rounded-3xl border-2 border-border hover:border-primary hover:scale-110 transition-all shadow-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background outline-none"
+                  style={{ backgroundColor: color }}
+                />
+              ))}
+              <div className="flex items-center gap-4 ml-auto">
+                <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Свой HEX:</span>
+                <input 
+                  type="text" 
+                  className="bg-background border border-input rounded-xl px-4 py-2 w-32 font-mono text-sm focus-visible:ring-2 focus-visible:ring-ring outline-none transition-all" 
+                  onBlur={(e) => save('primary_color', e.target.value)} 
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className="bg-card text-card-foreground border border-border p-8 rounded-[2rem] shadow-sm space-y-8">
+            <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-foreground">
+              <Palette className="text-primary" size={20}/> Токены дизайна
+            </h2>
+
+            {/* Выбор шрифта */}
+            <div className="space-y-3">
+              <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Системный шрифт</label>
+              <select 
+                className="w-full bg-background border border-input rounded-xl p-4 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring transition-all"
+                onChange={(e) => save('font_family', e.target.value)}
+              >
+                <option value="Geist Sans">Geist Sans (Современный)</option>
+                <option value="Inter">Inter (Чистый)</option>
+                <option value="JetBrains Mono">JetBrains Mono (Для кода)</option>
+                <option value="Space Grotesk (Технологичный)">Space Grotesk (Tech)</option>
+              </select>
+            </div>
+
+            {/* Закругление углов */}
+            <div className="space-y-3">
+              <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Радиус интерфейса</label>
+              <div className="flex gap-4">
+                {['0px', '8px', '16px', '32px'].map(r => (
+                  <button 
+                    key={r}
+                    onClick={() => save('border_radius', r)}
+                    className="flex-1 py-3 bg-muted border border-input rounded-xl hover:border-primary hover:bg-accent hover:text-accent-foreground transition-all text-xs font-bold focus-visible:ring-2 focus-visible:ring-ring outline-none"
+                  >
+                    {r === '0px' ? 'Острый' : r}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* Логотип */}
+          <section className="bg-card text-card-foreground border border-border p-8 rounded-[2rem] shadow-sm">
+            <h2 className="text-xl font-bold mb-6 text-foreground">Настройка логотипа</h2>
+            <div className="space-y-6">
+              <div className="flex gap-4 p-1 bg-muted rounded-2xl w-fit">
+                <button 
+                  onClick={() => setLogoType('svg')} 
+                  className={`px-6 py-2 rounded-xl text-xs font-bold transition-all ${logoType === 'svg' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  SVG-код
+                </button>
+                <button 
+                  onClick={() => setLogoType('image')} 
+                  className={`px-6 py-2 rounded-xl text-xs font-bold transition-all ${logoType === 'image' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  Изображение
+                </button>
+              </div>
+              <textarea 
+                className="w-full h-48 bg-background border border-input rounded-2xl p-6 font-mono text-primary text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring ring-offset-background transition-all"
+                placeholder="Вставьте SVG-код вашего логотипа..."
+                onBlur={(e) => save('logo_data', e.target.value)}
+              />
+            </div>
+          </section>
+        </div>
+
+        {/* Инфо-панель */}
+        <aside className="bg-primary p-8 rounded-[2rem] text-primary-foreground flex flex-col justify-between shadow-lg shadow-primary/20">
+          <div>
+            <h3 className="text-2xl font-black mb-4 uppercase italic">Предпросмотр</h3>
+            <p className="text-primary-foreground/80 text-sm leading-relaxed font-medium">
+              Изменения применяются мгновенно без перезагрузки сайта через Server-side Styles Injection.
+            </p>
+          </div>
+          <div className="mt-20">
+            <span className="text-[10px] uppercase tracking-widest font-black opacity-60">Статус</span>
+            <div className="text-lg font-bold">Система активна</div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/admin/layout.tsx">
+'use client';
+import { ThemeToggle } from "@/components/ThemeToggle";
+import Link from 'next/link';
+import Image from 'next/image';
+import { LayoutDashboard, Rocket, FileText, Share2, Layers, Shield, Palette } from 'lucide-react';
+
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const menu = [
+    { name: 'Обзор', icon: <LayoutDashboard size={18}/>, href: '/admin' },
+    { name: 'Проекты', icon: <Rocket size={18}/>, href: '/admin/projects' },
+    { name: 'Страницы', icon: <FileText size={18}/>, href: '/admin/pages' },
+    { name: 'Меню', icon: <Layers size={18}/>, href: '/admin/navigation' },
+    { name: 'Брендинг', icon: <Palette size={18}/>, href: '/admin/branding' },
+    { name: 'SEO', icon: <Shield size={18}/>, href: '/admin/seo' },
+  ];
+
+  return (
+    <div className="flex min-h-screen bg-background text-foreground">
+      {/* Боковая панель */}
+      <aside className="w-72 border-r border-border bg-card p-8 flex flex-col fixed h-full z-50">
+        <div className="flex items-center gap-3 mb-12">
+          <div className="w-10 h-10 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
+            <Shield className="text-primary-foreground" size={24}/>
+          </div>
+          <span className="text-xl font-black tracking-tighter text-foreground uppercase italic">CORE ADMIN</span>
+        </div>
+        
+        <nav className="flex-1 space-y-2">
+          {menu.map(item => (
+            <a 
+              key={item.name} 
+              href={item.href} 
+              className="flex items-center gap-4 px-4 py-3 rounded-2xl text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-all group outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span className="group-hover:text-primary transition-colors">{item.icon}</span>
+              <span className="font-bold text-xs uppercase tracking-widest transition-colors">{item.name}</span>
+            </a>
+          ))}
+        </nav>
+      </aside>
+
+      {/* Основная область контента */}
+      <div className="flex-1 ml-72 flex flex-col">
+        <header className="h-20 border-b border-border flex items-center justify-between px-10 sticky top-0 bg-background/80 backdrop-blur-md z-40">
+           <div className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+             Панель управления / <span className="text-foreground">Обзор</span>
+           </div>
+           
+           <div className="flex items-center gap-4">
+              <ThemeToggle />
+              <div className="w-8 h-8 rounded-full bg-primary border border-input shadow-lg shadow-primary/20 transition-transform active:scale-95 cursor-pointer" />
+           </div>
+        </header>
+
+        <main className="p-12 flex-1">
+          {children}
+        </main>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="src/components/SkillsGrid.tsx">
+import { Cpu } from 'lucide-react';
+
+export default function SkillsGrid({ skills }: { skills: any[] }) {
+  return (
+    <section className="py-24 max-w-7xl mx-auto px-8">
+      <h2 className="text-6xl font-black tracking-tighter mb-20 italic text-muted-foreground/10 uppercase select-none">
+        Стек технологий
+      </h2>
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
+        {skills.map(skill => (
+          <div 
+            key={skill.id} 
+            className="group relative bg-card text-card-foreground border border-border p-8 rounded-[2rem] hover:bg-primary hover:text-primary-foreground transition-all duration-500 cursor-default shadow-sm hover:shadow-lg hover:shadow-primary/20 active:scale-[0.98]"
+          >
+            <div className="text-primary group-hover:text-primary-foreground transition-colors mb-4">
+               {/* Иконка навыка */}
+               <Cpu size={32} strokeWidth={1.5} />
+            </div>
+            <h4 className="font-bold text-foreground group-hover:text-primary-foreground group-hover:translate-x-1 transition-all duration-300 uppercase tracking-tight">
+              {skill.name}
+            </h4>
+            <div className="absolute bottom-4 right-6 text-[10px] font-black opacity-0 group-hover:opacity-40 transition-opacity uppercase tracking-widest font-mono">
+              {skill.level}%
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+</file>
+
+<file path="src/app/admin/page.tsx">
+import { sql } from '@/lib/db';
+import { Rocket, Mail, Cpu } from 'lucide-react';
+
+export const dynamic = 'force-dynamic';
+
+export default async function AdminDashboard() {
+  let projectsCount = 0;
+  let skillsCount = 0;
+  let newMessages = 0;
+
+  try {
+    const pRes = await sql`SELECT count(*) FROM projects`;
+    projectsCount = pRes[0].count;
+
+    const sRes = await sql`SELECT count(*) FROM skills`;
+    skillsCount = sRes[0].count;
+
+    const mRes = await sql`SELECT count(*) FROM messages WHERE is_read = false`;
+    newMessages = mRes[0].count;
+  } catch (e) {
+    console.error("Ошибка статистики дашборда:", e);
+  }
+
+  return (
+    <div className="space-y-10">
+      <h1 className="text-4xl font-black text-foreground tracking-tighter italic uppercase">
+        Обзор
+      </h1>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Проекты */}
+        <div className="bg-card text-card-foreground border border-border p-8 rounded-[2rem] flex items-center justify-between shadow-sm transition-all hover:border-primary/20">
+          <div>
+            <div className="text-4xl font-black text-foreground">{projectsCount}</div>
+            <div className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mt-1">
+              Проекты
+            </div>
+          </div>
+          <Rocket className="text-primary/60" size={32}/>
+        </div>
+
+        {/* Навыки */}
+        <div className="bg-card text-card-foreground border border-border p-8 rounded-[2rem] flex items-center justify-between shadow-sm transition-all hover:border-primary/20">
+          <div>
+            <div className="text-4xl font-black text-foreground">{skillsCount}</div>
+            <div className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mt-1">
+              Навыки
+            </div>
+          </div>
+          <Cpu className="text-primary/60" size={32}/>
+        </div>
+
+        {/* Сообщения (Акцентная карточка) */}
+        <div className="bg-card text-card-foreground border border-primary/20 p-8 rounded-[2rem] flex items-center justify-between shadow-lg shadow-primary/5 transition-all hover:border-primary">
+          <div>
+            <div className="text-4xl font-black text-primary">{newMessages}</div>
+            <div className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mt-1">
+              Новые письма
+            </div>
+          </div>
+          <Mail className="text-primary" size={32}/>
+        </div>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="package.json">
+{
+  "name": "my-portfolio",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@hookform/resolvers": "^5.2.2",
+    "@vercel/blob": "^2.3.1",
+    "@vercel/postgres": "^0.10.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.38.0",
+    "lucide-react": "^0.577.0",
+    "next": "16.2.0",
+    "next-themes": "^0.4.6",
+    "postgres": "^3.4.8",
+    "radix-ui": "^1.4.3",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "shadcn": "^4.1.0",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.5.0",
+    "tw-animate-css": "^1.4.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "babel-plugin-react-compiler": "1.0.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.0",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
+</file>
+
+<file path="src/app/page.tsx">
+import Header from "@/components/Header";
+import { sql } from '@/lib/db';
+import { ThemeToggle } from "../components/ThemeToggle";
+import { ArrowUpRight, Github, Mail, Terminal } from 'lucide-react';
+
+export const dynamic = 'force-dynamic';
+
+export default async function HomePage() {
+  const [nav, projects, skills] = await Promise.all([
+    sql`SELECT * FROM navigation ORDER BY order_index ASC`,
+    sql`SELECT * FROM projects ORDER BY created_at DESC LIMIT 6`,
+    sql`SELECT * FROM skills ORDER BY category, level DESC`
+  ]);
+
+  return (
+    <>
+      <Header />
+      <div className="min-h-screen bg-background text-foreground selection:bg-primary/20">
+        {/* 1. Навигация */}
+        <nav className="fixed top-0 w-full z-50 border-b border-border bg-background/80 backdrop-blur-xl">
+  <div className="max-w-7xl mx-auto px-8 h-20 flex justify-between items-center">
+    {/* Логотип */}
+    <span className="text-xl font-black tracking-tighter text-foreground uppercase italic">
+      ВЕБ<span className="text-primary">.</span>КОДЕР
+    </span>
+
+    {/* Основное меню (центр) */}
+    <div className="hidden md:flex gap-8">
+      {nav.map(item => (
+        <a 
+          key={item.id} 
+          href={item.url} 
+          className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground hover:text-primary transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+        >
+          {item.label}
+        </a>
+      ))}
+    </div>
+
+    {/* Правый блок: Админка + Переключатель */}
+    <div className="flex items-center gap-6">
+      <a 
+        href="/admin" 
+        className="text-[10px] font-black uppercase tracking-widest opacity-20 hover:opacity-100 hover:text-primary transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+      >
+        Админка
+      </a>
+      <ThemeToggle />
+    </div>
+  </div>
+</nav>
+
+        {/* 2. Герой-секция */}
+        <section className="pt-40 pb-20 px-8 max-w-7xl mx-auto">
+          <h1 className="text-7xl md:text-9xl font-black tracking-tighter text-foreground mb-8 leading-[0.8] uppercase italic">
+            СОЗДАЮ <br /> 
+            <span className="text-primary">ЦИФРОВОЙ</span> ОПЫТ
+          </h1>
+          <p className="max-w-xl text-lg text-muted-foreground leading-relaxed font-medium">
+            Я разрабатываю высокопроизводительные веб-приложения и системы управления, где каждый пиксель имеет значение.
+          </p>
+        </section>
+
+        {/* 3. Матрица навыков */}
+        <section className="py-20 px-8 max-w-7xl mx-auto border-t border-border">
+          <div className="flex justify-between items-end mb-12">
+            <h2 className="text-3xl font-black text-foreground tracking-tight italic uppercase">Стек технологий</h2>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            {skills.map(skill => (
+              <div 
+                key={skill.id} 
+                className="p-6 bg-card border border-border rounded-3xl hover:border-primary/40 transition-all group shadow-sm"
+              >
+                <div className="text-primary mb-4 group-hover:scale-110 transition-transform duration-300">
+                  <Terminal size={24} />
+                </div>
+                <div className="font-black text-foreground text-xs uppercase tracking-tight">{skill.name}</div>
+                <div className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-tighter">
+                  Опыт: {skill.level}%
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* 4. Портфолио */}
+        <section className="py-20 px-8 max-w-7xl mx-auto border-t border-border">
+          <h2 className="text-3xl font-black text-foreground tracking-tight italic mb-12 uppercase">Избранные проекты</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+            {projects.map(project => (
+              <div key={project.id} className="group cursor-pointer">
+                <div className="relative aspect-video rounded-[2.5rem] overflow-hidden bg-muted border border-border mb-6">
+                  <img 
+                    src={project.image_url} 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
+                    alt={project.title}
+                  />
+                  <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
+                    <ArrowUpRight size={48} className="text-primary" />
+                  </div>
+                </div>
+                <div className="flex justify-between items-start px-4">
+                  <div>
+                    <h3 className="text-xl font-black text-foreground uppercase italic tracking-tight">
+                      {project.title}
+                    </h3>
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {project.tech_stack?.map((t: string) => (
+                        <span 
+                          key={t} 
+                          className="text-[10px] font-bold text-muted-foreground border border-border px-3 py-1 rounded-full uppercase tracking-tighter bg-secondary/50"
+                        >
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* 5. Подвал */}
+        <footer className="py-20 border-t border-border text-center bg-card/30">
+          <div className="flex justify-center gap-6 mb-8">
+             <Github className="cursor-pointer text-muted-foreground hover:text-primary transition-colors" />
+             <Mail className="cursor-pointer text-muted-foreground hover:text-primary transition-colors" />
+          </div>
+          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em]">
+             Создано на Next.js 16 & Neon SQL
+          </p>
+        </footer>
+      </div>
+    </>
+  );
+}
+</file>
+
+<file path="src/app/api/setup/route.ts">
+import postgres from 'postgres';
+import { NextResponse } from 'next/server';
+
+export async function GET() {
+  const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
+  try {
+    // 1. БРЕНДИНГ И ДИЗАЙН
+    await sql`CREATE TABLE IF NOT EXISTS settings (id SERIAL PRIMARY KEY, key TEXT UNIQUE, value TEXT);`;
+    await sql`
+  CREATE TABLE IF NOT EXISTS messages (
+    id SERIAL PRIMARY KEY,
+    name TEXT,
+    email TEXT,
+    message TEXT,
+    is_read BOOLEAN DEFAULT false, -- Убеждаемся, что колонка называется именно так
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+`;
+    // 2. КОНТЕНТ (ПРОЕКТЫ, СТРАНИЦЫ, НАВЫКИ)
+    await sql`CREATE TABLE IF NOT EXISTS projects (id SERIAL PRIMARY KEY, title TEXT, slug TEXT UNIQUE, image_url TEXT, description TEXT, content JSONB, tech_stack TEXT[], live_url TEXT, github_url TEXT, featured BOOLEAN DEFAULT false, order_index INT);`;
+    await sql`CREATE TABLE IF NOT EXISTS pages (id SERIAL PRIMARY KEY, title TEXT, slug TEXT UNIQUE, content JSONB, meta_title TEXT, meta_desc TEXT, published BOOLEAN DEFAULT true);`;
+    await sql`CREATE TABLE IF NOT EXISTS skills (id SERIAL PRIMARY KEY, name TEXT, category TEXT, icon TEXT, level INT);`;
+    await sql`CREATE TABLE IF NOT EXISTS experience (id SERIAL PRIMARY KEY, title TEXT, company TEXT, period TEXT, description TEXT, type TEXT);`;
+
+    // 3. НАВИГАЦИЯ (ДИНАМИЧЕСКОЕ МЕНЮ)
+    await sql`CREATE TABLE IF NOT EXISTS navigation (id SERIAL PRIMARY KEY, label TEXT, url TEXT, order_index INT, parent_id INT);`;
+
+    // 4. ЛИДЫ И СООБЩЕНИЯ
+    await sql`CREATE TABLE IF NOT EXISTS leads (id SERIAL PRIMARY KEY, name TEXT, email TEXT, message TEXT, status TEXT DEFAULT 'new', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`;
+
+    // Инициализация "Пульта Управления"
+    await sql`INSERT INTO settings (key, value) VALUES 
+      ('site_name', 'WEB.CODER.PRO'),
+      ('logo_type', 'svg'), -- 'svg' or 'image'
+      ('logo_data', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/></svg>'),
+      ('primary_color', '#6366f1'),
+      ('font_family', 'Geist Sans'),
+      ('footer_text', '© 2026 Crafted by Web Coder')
+      ON CONFLICT (key) DO NOTHING;`;
+
+    return NextResponse.json({ message: "СИСТЕМА УПРАВЛЕНИЯ РАЗВЕРНУТА. ВСЕ МОДУЛИ ГОТОВЫ." });
+  } catch (e: any) { return NextResponse.json({ error: e.message }, { status: 500 }); }
+}
+</file>
+
+<file path="src/app/layout.tsx">
+import { sql } from '@/lib/db';
+import './globals.css';
+import { ThemeProvider } from "@/components/theme-provider"
+import { Geist } from "next/font/google";
+import { cn } from "@/lib/utils";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+
+export const dynamic = 'force-dynamic';
+
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  let cfg: Record<string, string> = {};
+
+  try {
+    const settings = await sql`SELECT key, value FROM settings`;
+    cfg = Object.fromEntries(settings.map(s => [s.key, s.value]));
+  } catch (e) {
+    console.warn("⚠️ База данных не инициализирована. Используются стандартные настройки.");
+  }
+
+  const primaryColor = cfg.primary_color || '#6366f1';
+  const borderRadius = cfg.border_radius || '16px';
+  const fontFamily = cfg.font_family || 'Geist Sans';
+
+  return (
+    <html lang="ru" suppressHydrationWarning className={cn("font-sans", geist.variable)}>
+      <head>
+        <style dangerouslySetInnerHTML={{ __html: `
+          :root {
+            --primary: ${primaryColor};
+            --radius: ${borderRadius};
+          }
+          body {
+            font-family: ${fontFamily}, var(--font-sans);
+          }
+        `}} />
+      </head>
+      <body className="antialiased bg-background text-foreground selection:bg-primary/20 selection:text-primary-foreground min-h-screen">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+        </ThemeProvider>
+      </body>
+    </html>
+  );
+}
+</file>
+
+</files>

@@ -17,38 +17,7 @@ export default async function HomePage() {
       <Header />
       <div className="min-h-screen bg-background text-foreground selection:bg-primary/20">
         {/* 1. Навигация */}
-        <nav className="fixed top-0 w-full z-50 border-b border-border bg-background/80 backdrop-blur-xl">
-  <div className="max-w-7xl mx-auto px-8 h-20 flex justify-between items-center">
-    {/* Логотип */}
-    <span className="text-xl font-black tracking-tighter text-foreground uppercase italic">
-      ВЕБ<span className="text-primary">.</span>КОДЕР
-    </span>
-
-    {/* Основное меню (центр) */}
-    <div className="hidden md:flex gap-8">
-      {nav.map(item => (
-        <a 
-          key={item.id} 
-          href={item.url} 
-          className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground hover:text-primary transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-        >
-          {item.label}
-        </a>
-      ))}
-    </div>
-
-    {/* Правый блок: Админка + Переключатель */}
-    <div className="flex items-center gap-6">
-      <a 
-        href="/admin" 
-        className="text-[10px] font-black uppercase tracking-widest opacity-20 hover:opacity-100 hover:text-primary transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-      >
-        Админка
-      </a>
-      <ThemeToggle />
-    </div>
-  </div>
-</nav>
+ 
 
         {/* 2. Герой-секция */}
         <section className="pt-40 pb-20 px-8 max-w-7xl mx-auto">

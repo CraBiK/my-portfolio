@@ -1,5 +1,7 @@
 'use client';
 import { ThemeToggle } from "@/components/ThemeToggle";
+import Link from 'next/link';
+import Image from 'next/image';
 import { LayoutDashboard, Rocket, FileText, Share2, Layers, Shield, Palette } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

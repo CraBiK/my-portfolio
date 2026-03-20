@@ -3,21 +3,37 @@ import { ThemeToggle } from "./ThemeToggle";
 
 export default async function Header() {
   // Получаем логотип и меню из базы
-  const [nav, logoSetting] = await Promise.all([
+  const [nav, settings] = await Promise.all([
     sql`SELECT * FROM navigation ORDER BY order_index ASC`,
-    sql`SELECT value FROM settings WHERE key = 'logo_data' LIMIT 1`
+    sql`SELECT key, value FROM settings WHERE key IN ('logo_data', 'logo_type', 'logo_image_url')`
   ]);
 
-  const logoData = logoSetting[0]?.value || "ВЕБ.КОДЕР";
+  const cfg = Object.fromEntries(settings.map(s => [s.key, s.value]));
+	
+  const logoType = cfg.logo_type || 'svg';
+  const logoData = cfg.logo_data || 'ВЕБ.КОДЕР';
+  const logoImageUrl = cfg.logo_image_url;
 
   return (
     <header className="fixed top-0 w-full z-50 border-b border-border bg-background/80 backdrop-blur-xl text-foreground transition-all duration-300">
       <div className="max-w-7xl mx-auto px-8 h-20 flex justify-between items-center">
         {/* ЛОГОТИП (SVG или Текст) */}
-        <div 
-          className="h-8 flex items-center gap-2 font-black tracking-tighter text-primary uppercase italic"
-          dangerouslySetInnerHTML={{ __html: logoData.startsWith('<svg') ? logoData : `<span>${logoData}</span>` }}
-        />
+        <div className="h-20 flex items-center">
+  {logoType === 'image' && logoImageUrl ? (
+    <img 
+  src={logoImageUrl} 
+  alt="Logo" 
+  className="w-full h-full object-contain " 
+/>
+  ) : (
+    <div 
+      className="h-8 flex items-center gap-2 font-black tracking-tighter text-primary uppercase italic"
+      dangerouslySetInnerHTML={{ 
+        __html: logoData.startsWith('<svg') ? logoData : `<span>${logoData}</span>` 
+      }}
+    />
+  )}
+</div>
 
         {/* НАВИГАЦИЯ */}
         <nav className="hidden md:flex gap-10 items-center">

@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { upload } from '@vercel/blob/client'; 
 import { 
   Palette, 
   LayoutDashboard, 
@@ -7,15 +8,47 @@ import {
   FileText, 
   Layers, 
   Shield, 
-  Settings 
+  Settings,
+	Upload, 
+	Loader2, 
+	ImageIcon	
 } from 'lucide-react';
 
 export default function BrandingPage() {
   const [logoType, setLogoType] = useState('svg');
 
+	const [isUploading, setIsUploading] = useState(false);
+  const [currentLogoUrl, setCurrentLogoUrl] = useState('');
+
   const save = async (key: string, value: string) => {
     await fetch('/api/settings', { method: 'POST', body: JSON.stringify({ key, value }) });
     alert(`Настройка сохранена: ${key}`);
+  };
+
+	const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      // 1. Загружаем файл в облако Vercel Blob
+      const newBlob = await upload(file.name, file, {
+        access: 'public',
+        handleUploadUrl: '/api/upload', // Твой существующий роут
+      });
+
+      // 2. Сохраняем URL в базу данных
+      await save('logo_image_url', newBlob.url);
+      await save('logo_type', 'image'); // Помечаем, что теперь используем картинку
+      
+      setCurrentLogoUrl(newBlob.url);
+      alert('Логотип-картинка сохранен!');
+    } catch (error) {
+      console.error('Ошибка загрузки:', error);
+      alert('Ошибка при загрузке файла');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -92,26 +125,61 @@ export default function BrandingPage() {
           <section className="bg-card text-card-foreground border border-border p-8 rounded-[2rem] shadow-sm">
             <h2 className="text-xl font-bold mb-6 text-foreground">Настройка логотипа</h2>
             <div className="space-y-6">
-              <div className="flex gap-4 p-1 bg-muted rounded-2xl w-fit">
-                <button 
-                  onClick={() => setLogoType('svg')} 
-                  className={`px-6 py-2 rounded-xl text-xs font-bold transition-all ${logoType === 'svg' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-                >
-                  SVG-код
-                </button>
-                <button 
-                  onClick={() => setLogoType('image')} 
-                  className={`px-6 py-2 rounded-xl text-xs font-bold transition-all ${logoType === 'image' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-                >
-                  Изображение
-                </button>
-              </div>
-              <textarea 
-                className="w-full h-48 bg-background border border-input rounded-2xl p-6 font-mono text-primary text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring ring-offset-background transition-all"
-                placeholder="Вставьте SVG-код вашего логотипа..."
-                onBlur={(e) => save('logo_data', e.target.value)}
-              />
+          {/* Переключатель */}
+          <div className="flex gap-4 p-1 bg-muted rounded-2xl w-fit">
+            <button 
+              onClick={() => { setLogoType('svg'); save('logo_type', 'svg'); }} 
+              className={`px-6 py-2 rounded-xl text-xs font-bold transition-all ${logoType === 'svg' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}
+            >
+              SVG-код
+            </button>
+            <button 
+              onClick={() => { setLogoType('image'); save('logo_type', 'image'); }} 
+              className={`px-6 py-2 rounded-xl text-xs font-bold transition-all ${logoType === 'image' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}
+            >
+              Изображение (PNG/JPG)
+            </button>
+          </div>
+
+          {logoType === 'svg' ? (
+            <textarea 
+              className="w-full h-48 bg-background border border-input rounded-2xl p-6 font-mono text-primary text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring transition-all"
+              placeholder="Вставьте SVG-код..."
+              onBlur={(e) => save('logo_data', e.target.value)}
+            />
+          ) : (
+            <div className="space-y-4">
+              {/* Поле загрузки */}
+              <label className="relative border-2 border-dashed border-border rounded-3xl p-12 flex flex-col items-center justify-center hover:bg-muted hover:border-primary/50 transition-all cursor-pointer group">
+                <input 
+                  type="file" 
+                  className="absolute inset-0 opacity-0 cursor-pointer" 
+                  onChange={handleFileUpload}
+                  accept="image/*"
+                  disabled={isUploading}
+                />
+                
+                {isUploading ? (
+                  <Loader2 className="animate-spin text-primary mb-4" size={32} />
+                ) : (
+                  <Upload className="text-muted-foreground group-hover:text-primary mb-4" size={32} />
+                )}
+                
+                <span className="font-bold text-foreground">
+                  {isUploading ? 'Загрузка...' : 'Выбрать PNG или JPG'}
+                </span>
+                <span className="text-xs text-muted-foreground mt-2 uppercase tracking-widest">Макс. 4MB</span>
+              </label>
+
+              {/* Мини-превью загруженного логотипа */}
+              {currentLogoUrl && (
+                <div className="p-4 bg-muted rounded-2xl flex items-center justify-center border border-border">
+                  <img src={currentLogoUrl} alt="Preview" className="h-12 object-contain" />
+                </div>
+              )}
             </div>
+          )}
+        </div>
           </section>
         </div>
 
