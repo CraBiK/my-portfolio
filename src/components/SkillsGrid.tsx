@@ -1,3 +1,4 @@
+import { Cpu } from 'lucide-react';
 export default function SkillsGrid({ skills }: { skills: any[] }) {
   return (
     <section className="py-24 max-w-7xl mx-auto px-8">
