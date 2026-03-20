@@ -1,3 +1,4 @@
+import { ThemeProvider } from "@/components/theme-provider"
 import { sql } from '@/lib/db';
 import './globals.css';
 
@@ -36,7 +37,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           }
         `}} />
       </head>
-      <body>{children}</body>
+      <body style={{ '--primary': cfg.primary_color || '#6366f1' } as any}>
+			<ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem
+          disableTransitionOnChange
+        >
+					{children}
+				</ThemeProvider>
+				</body>
     </html>
   );
 }

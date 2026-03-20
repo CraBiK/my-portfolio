@@ -1,3 +1,4 @@
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { LayoutDashboard, Rocket, FileText, Share2, Layers, Shield, Palette } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -28,7 +29,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           ))}
         </nav>
       </aside>
+			 <div className="flex-1 ml-72">
+			<header className="h-20 border-b border-white/5 flex items-center justify-between px-10 sticky top-0 bg-[#050505]/80 backdrop-blur-md z-40">
+           <div className="text-xs font-bold uppercase tracking-widest text-slate-600">
+             Панель управления / <span className="text-white">Обзор</span>
+           </div>
+           
+           <div className="flex items-center gap-4">
+              <ThemeToggle /> {/* Переключатель в админке */}
+              <div className="w-8 h-8 rounded-full bg-indigo-600 border border-white/10 shadow-lg shadow-indigo-500/20" />
+           </div>
+        </header>
       <main className="ml-72 flex-1 p-12">{children}</main>
     </div>
+		 </div>
   );
 }

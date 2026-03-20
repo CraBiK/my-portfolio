@@ -1,3 +1,4 @@
+import Header from "@/components/Header";
 import { sql } from '@/lib/db';
 import { ArrowUpRight, Github, Mail, Terminal } from 'lucide-react';
 
@@ -12,6 +13,8 @@ export default async function HomePage() {
   ]);
 
   return (
+		<>
+			<Header /> {/* Твой хедер теперь здесь! */}
     <div className="min-h-screen bg-[#050505] text-slate-300">
       {/* 1. Header (Dynamic Nav) */}
       <nav className="fixed top-0 w-full z-50 border-b border-white/5 bg-[#050505]/80 backdrop-blur-xl">
@@ -104,5 +107,6 @@ export default async function HomePage() {
         </p>
       </footer>
     </div>
+		</>
   );
 }
