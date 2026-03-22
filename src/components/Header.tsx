@@ -15,25 +15,25 @@ export default async function Header() {
   const logoImageUrl = cfg.logo_image_url;
 
   return (
-    <header className="fixed top-0 w-full z-50 border-b border-border bg-background/80 backdrop-blur-xl text-foreground transition-all duration-300">
-      <div className="max-w-7xl mx-auto px-8 h-20 flex justify-between items-center">
+    <header className="fixed top-0 w-full z-50  bg-background/80 backdrop-blur-xl text-foreground transition-all duration-300">
+      <div className="max-w-7xl mx-auto px-8 h-28 flex justify-between items-center">
         {/* ЛОГОТИП (SVG или Текст) */}
-        <div className="h-20 flex items-center">
-  {logoType === 'image' && logoImageUrl ? (
-    <img 
-  src={logoImageUrl} 
-  alt="Logo" 
-  className="w-full h-full object-contain " 
-/>
-  ) : (
-    <div 
-      className="h-8 flex items-center gap-2 font-black tracking-tighter text-primary uppercase italic"
-      dangerouslySetInnerHTML={{ 
-        __html: logoData.startsWith('<svg') ? logoData : `<span>${logoData}</span>` 
-      }}
-    />
-  )}
-</div>
+        <div className="h-28 flex items-center">
+					{logoType === 'image' && logoImageUrl ? (
+						<img 
+							src={logoImageUrl} 
+							alt="Logo" 
+							className="w-full h-28 object-contain " 
+						/>
+					) : (
+						<div 
+							className="h-8 flex items-center gap-2 font-black tracking-tighter text-primary uppercase italic"
+							dangerouslySetInnerHTML={{ 
+								__html: logoData.startsWith('<svg') ? logoData : `<span>${logoData}</span>` 
+							}}
+						/>
+					)}
+			</div>
 
         {/* НАВИГАЦИЯ */}
         <nav className="hidden md:flex gap-10 items-center">

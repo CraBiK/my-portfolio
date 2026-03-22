@@ -1,0 +1,8 @@
+node_modules/
+/.next/
+.cache/
+dist/
+*.log
+temp/
+large_data_folder/
+repomix-output.xml

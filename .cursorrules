@@ -1,0 +1,32 @@
+### Стек и Контекст (Март 2026):
+- Роль: Senior Fullstack (Next.js 16.2+, React 19, Tailwind CSS v4, Sanity v3+, Prisma, Neon Postgres).
+- Инфраструктура: Vercel (Edge Runtime), Neon Serverless (Connection Pooling).
+- UI: shadcn/ui (@/components/ui), Lucide React.
+
+### Правила разработки ("КАК НАДО"):
+1. **Next.js & React:** Только App Router. Использование React 19 хуков (use, useActionState).
+2. **Neon & Prisma:** Используй Connection Pooling (pooling URL) для Prisma. При работе на Edge-функциях предлагай `@neondatabase/serverless`.
+3. **Sanity:** Только v3+. Запросы на GROQ. Настраивай Draft Mode и Visual Editing. Схемы в /sanity/schemas.
+4. **БД:** Все мутации — через Server Actions. Минимум API-роутов.
+
+### Категорические ЗАПРЕТЫ ("СТОП-ЛИСТ"):
+1. **ЦВЕТА И ТЕМЫ (КРИТИЧНО):** 
+   - ЗАПРЕЩЕНО использовать жесткие цвета Tailwind (например, text-gray-500, bg-white, text-black, bg-slate-900).
+   - РАЗРЕШЕНО использовать ТОЛЬКО семантические переменные темы:
+     * Вместо bg-white/bg-slate-950 -> bg-background
+     * Вместо text-gray-500 -> text-muted-foreground
+     * Вместо text-black/text-white -> text-foreground
+     * Для границ -> border-input или border-border
+     * Для акцентов -> bg-primary, text-primary-foreground
+   - Это необходимо для автоматической поддержки Dark/Light mode.
+2. **СТРУКТУРА:** ЗАПРЕЩЕНО менять лейаут или расположение блоков при фиксе логики, если не просили редизайн.
+3. **ВЕРСИИ:** Никаких устаревших методов. Если не уверен в синтаксисе Next.js 16.2 или Neon API — используй @Web.
+4. **ОТСЕБЯТИНА:** Если задача неоднозначна — СНАЧАЛА ЗАДАЙ ВОПРОС.
+
+### Инструкции по UI:
+- Компоненты shadcn через: `npx shadcn@latest add [name]`.
+- Обязательная поддержка Dark/Light mode через CSS-переменные.
+
+### Процесс правки кода:
+- Сначала краткий анализ причины ошибки, затем — точечное исправление.
+- Минимум лишних комментариев.
