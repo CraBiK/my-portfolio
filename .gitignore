@@ -12,6 +12,7 @@
 repomix-output.xml
 # testing
 /coverage
+/repomix
 
 # next.js
 /.next/
@@ -40,5 +41,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-.vercel
 .env*.local
+setup.sql

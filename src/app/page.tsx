@@ -20,8 +20,8 @@ export default async function HomePage() {
  
 
         {/* 2. Герой-секция */}
-        <section className="pt-40 pb-20 px-8 max-w-7xl mx-auto">
-          <h1 className="text-7xl md:text-8xl font-black tracking-tighter text-foreground mb-8 leading-[0.8] uppercase italic">
+        <section className="pt-15 pb-20 px-8 max-w-7xl mx-auto">
+        <h1 className="text-7xl md:text-8xl font-black tracking-tighter text-foreground mb-8 leading-[0.8] uppercase italic">
             I build <br /> 
             <span className="text-primary">lightning-fast</span> custom websites.
           </h1>

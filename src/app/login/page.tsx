@@ -14,9 +14,10 @@ export default function LoginPage() {
   );
 
   return (
-    <Card className="w-[350px]">
+    <div className="flex items-center justify-center h-screen">
+    <Card className="w-[350]">
       <CardHeader>
-        <CardTitle>Вход</CardTitle>
+        <CardTitle className="text-center">Вход</CardTitle>
       </CardHeader>
       <CardContent>
         <form action={formAction} className="space-y-4">
@@ -33,5 +34,6 @@ export default function LoginPage() {
         </form>
       </CardContent>
     </Card>
+    </div>
   );
 }

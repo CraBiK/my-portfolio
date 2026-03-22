@@ -1,7 +1,8 @@
-import { sql } from '@/lib/db';
 import './globals.css';
+import { sql } from '@/lib/db';
+import { Metadata } from 'next';
 import { ThemeProvider } from "@/components/theme-provider"
-import { Montserrat, Nunito, Geist } from "next/font/google";
+import { Montserrat, Nunito } from "next/font/google";
 import { cn } from "@/lib/utils";
 
 const inter = Montserrat({ 
@@ -10,7 +11,7 @@ const inter = Montserrat({
   display: 'swap', 
   variable:'--font-serif'
 });
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+
 
 interface GlobalSettings {
   header_height: number;
@@ -21,53 +22,39 @@ interface GlobalSettings {
   custom_css: string;
 }
 
-export async function generateMetadata({ params }: { params: any }) {
-  // Определяем, на какой мы странице (например, 'home')
-  const pageKey = 'home'; 
-  
-  const [seo] = await sql`SELECT title, description FROM seo WHERE page = ${pageKey}`;
+export async function generateMetadata(): Promise<Metadata> {
+  // Тянем данные для главной страницы
+  const [seo] = await sql`SELECT title, description FROM seo WHERE page = 'home' LIMIT 1`;
 
   return {
-    title: seo?.title || "Дефолтный заголовок",
-    description: seo?.description || "Дефолтное описание",
+    title: seo?.title || " ",
+    description: seo?.description || " ",
+    // Здесь же можно добавить иконку из настроек, если захочешь
   };
 }
-
-export const dynamic = 'force-dynamic';
-
-export default async function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  // 1. Получаем настройки из Neon
-  // Добавляем [0], так как sql обычно возвращает массив
-  const [settings] = await sql<GlobalSettings[]>`
-    SELECT * FROM global_settings WHERE id = 1 LIMIT 1
-  `;
-
-  // Фоллбек на случай, если база пуста (чтобы сайт не упал)
-  const s = settings || {
-    header_height: 64,
-    logo_width: 120,
-    logo_height: 40,
-    logo_url: '/logo.png',
-    logo_custom_style: '',
-    custom_css: ''
-  };
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Твой существующий код получения global_settings
+  const [settings] = await sql`SELECT * FROM global_settings WHERE id = 1 LIMIT 1`;
 
   return (
-    <html lang="ru" suppressHydrationWarning className={cn("font-sans", geist.variable)}>
-      
-      <body 
-        style={{ 
-          '--header-height': `${s.header_height}px`,
-          '--logo-width': `${s.logo_width}px`,
-          '--logo-height': `${s.logo_height}px`
-        } as React.CSSProperties}
-        className="min-h-screen bg-background font-sans antialiased"
-      >
+    <html lang="ru" suppressHydrationWarning>
+      <head>
+        {/* Инъекция стилей */}
+        <style dangerouslySetInnerHTML={{ __html: settings?.custom_css || "" }} />
+      </head>
+      <body style={{ 
+        '--header-height': `${settings?.header_height || 64}px`,
+        '--logo-width': `${settings?.logo_width || 120}px`,
+        '--logo-height': `${settings?.logo_height || 40}px`
+      } as React.CSSProperties}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
         {children}
+        </ThemeProvider>
       </body>
     </html>
   );

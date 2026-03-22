@@ -20,7 +20,7 @@ repomix-output.xml
 
 # production
 /build
-
+setup.sql
 # misc
 .DS_Store
 *.pem

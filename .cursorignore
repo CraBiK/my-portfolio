@@ -1,8 +1,12 @@
-node_modules/
-/.next/
+/node_modules
+/.next
 .cache/
 dist/
 *.log
 temp/
 large_data_folder/
 repomix-output.xml
+/repomix
+.vercel
+.env*
+setup.sql
