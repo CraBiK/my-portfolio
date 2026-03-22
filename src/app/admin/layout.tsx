@@ -1,5 +1,6 @@
 'use client';
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { LogoutButton } from "@/components/admin/logout";
 import Link from 'next/link';
 import Image from 'next/image';
 import { LayoutDashboard, Rocket, FileText, Share2, Layers, Shield, Palette } from 'lucide-react';
@@ -48,7 +49,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
            
            <div className="flex items-center gap-4">
               <ThemeToggle />
-              <div className="w-8 h-8 rounded-full bg-primary border border-input shadow-lg shadow-primary/20 transition-transform active:scale-95 cursor-pointer" />
+              <LogoutButton />
            </div>
         </header>
 

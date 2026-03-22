@@ -1,4 +1,4 @@
-This file is a merged representation of a subset of the codebase, containing specifically included files and files not matching ignore patterns, combined into a single document by Repomix.
+This file is a merged representation of a subset of the codebase, containing specifically included files, combined into a single document by Repomix.
 
 <file_summary>
 This section contains a summary of this file.
@@ -32,8 +32,7 @@ The content is organized as follows:
 <notes>
 - Some files may have been excluded based on .gitignore rules and Repomix's configuration
 - Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
-- Only files matching these patterns are included: .
-- Files matching these patterns are excluded: node_modules, .next, public, package-lock.json, *.log, .git
+- Only files matching these patterns are included: src/**
 - Files matching patterns in .gitignore are excluded
 - Files matching default ignore patterns are excluded
 - Files are sorted by Git change count (files with more changes are at the bottom)
@@ -42,13 +41,8 @@ The content is organized as follows:
 </file_summary>
 
 <directory_structure>
-.gitignore
-components.json
-eslint.config.mjs
-next.config.ts
-package.json
-postcss.config.mjs
-README.md
+src/actions/auth.ts
+src/actions/settings-actions.ts
 src/app/admin/appearance/page.tsx
 src/app/admin/branding/page.tsx
 src/app/admin/layout.tsx
@@ -57,6 +51,8 @@ src/app/admin/page.tsx
 src/app/admin/pages/page.tsx
 src/app/admin/projects/page.tsx
 src/app/admin/seo/page.tsx
+src/app/admin/settings/page.tsx
+src/app/admin/settings/settings-form.tsx
 src/app/admin/skills/page.tsx
 src/app/api/navigation/route.ts
 src/app/api/pages/route.ts
@@ -69,18 +65,607 @@ src/app/api/upload/route.ts
 src/app/favicon.ico
 src/app/globals.css
 src/app/layout.tsx
+src/app/login/page.tsx
 src/app/page.tsx
+src/components/admin/logout.tsx
+src/components/admin/style-editor.tsx
 src/components/Header.tsx
+src/components/Logo.tsx
 src/components/SkillsGrid.tsx
 src/components/theme-provider.tsx
 src/components/ThemeToggle.tsx
+src/components/ui/button.tsx
+src/components/ui/card.tsx
+src/components/ui/input.tsx
+src/components/ui/label.tsx
+src/components/ui/sonner.tsx
+src/lib/auth.ts
 src/lib/db.ts
+src/lib/password.ts
 src/lib/utils.ts
-tsconfig.json
+src/proxy.ts
 </directory_structure>
 
 <files>
 This section contains the contents of the repository's files.
+
+<file path="src/actions/auth.ts">
+"use server";
+
+import bcrypt from "bcryptjs";
+import { sql } from "@/lib/db";
+import { login as setSession } from "@/lib/auth";
+import { logout as clearSession } from "@/lib/auth";
+import { redirect } from "next/navigation";
+
+export type SignInResult = { ok: true } | { ok: false; error: string };
+
+type UserRow = {
+  id: number;
+  email: string;
+  password: string;
+  role: string;
+};
+
+export async function signIn(
+  _prevState: SignInResult | null,
+  formData: FormData
+): Promise<SignInResult> {
+  const email = formData.get("email")?.toString().trim() ?? "";
+  const password = formData.get("password")?.toString() ?? "";
+
+  if (!email || !password) {
+    return { ok: false, error: "Укажите email и пароль." };
+  }
+
+  const [user] = await sql<UserRow[]>`
+    SELECT * FROM users WHERE email = ${email}
+  `;
+
+  if (!user) {
+    return { ok: false, error: "Неверный email или пароль." };
+  }
+
+  const match = await bcrypt.compare(password, user.password);
+  if (!match) {
+    return { ok: false, error: "Неверный email или пароль." };
+  }
+
+  await setSession({
+    userId: String(user.id),
+    email: user.email,
+    role: user.role ?? "user",
+  });
+if (user.role === 'admin') {
+    redirect("/admin");
+  } 
+	redirect("/"); 
+  return { ok: true };
+}
+
+export async function signOutAction() {
+  await clearSession(); // Твоя функция из lib/auth.ts, которая удаляет куку
+  redirect("/login");
+}
+</file>
+
+<file path="src/actions/settings-actions.ts">
+'use server';
+
+import { sql } from '@vercel/postgres';
+import { revalidatePath } from 'next/cache';
+
+interface GlobalSettings {
+  header_height?: number;
+  logo_width?: number;
+  logo_height?: number;
+  logo_url?: string;         // <-- Новое поле
+  logo_custom_style?: string; // <-- Новое поле
+  custom_css?: string;
+}
+
+export async function updateGlobalSettings(settings: GlobalSettings) {
+  try {
+    const { 
+      header_height, 
+      logo_width, 
+      logo_height, 
+      logo_url, 
+      logo_custom_style, 
+      custom_css 
+    } = settings;
+    
+    await sql`
+      UPDATE global_settings
+      SET
+        header_height = ${header_height},
+        logo_width = ${logo_width},
+        logo_height = ${logo_height},
+        logo_url = ${logo_url},
+        logo_custom_style = ${logo_custom_style},
+        custom_css = ${custom_css},
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = 1;
+    `;
+    
+    // Сбрасываем кэш для главной и всех страниц, 
+    // так как эти настройки влияют на Layout
+    revalidatePath('/', 'layout');
+    
+    return { success: true, message: 'Настройки успешно обновлены!' };
+  } catch (error) {
+    console.error('Failed to update global settings:', error);
+    return { success: false, error: 'Ошибка при обновлении настроек в базе Neon.' };
+  }
+}
+</file>
+
+<file path="src/app/admin/settings/page.tsx">
+import { sql } from '@/lib/db';
+import SettingsForm from './settings-form'; // Вынесем саму форму в клиентский компонент
+
+export default async function SettingsPage() {
+  // 1. Читаем настройки прямо на сервере
+  const [settings] = await sql`SELECT * FROM global_settings WHERE id = 1`;
+
+  return (
+    <div className="container mx-auto py-10">
+      <h1 className="text-3xl font-bold mb-8">Настройки сайта</h1>
+      {/* Передаем данные в клиентскую форму */}
+      <SettingsForm initialData={settings} />
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/admin/settings/settings-form.tsx">
+
+</file>
+
+<file path="src/app/login/page.tsx">
+"use client";
+
+import { useActionState } from "react";
+import { signIn, SignInResult } from "@/actions/auth";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+
+export default function LoginPage() {
+  // хук принимает (экшн, начальное состояние)
+  const [state, formAction, isPending] = useActionState<SignInResult | null, FormData>(
+    signIn, 
+    null
+  );
+
+  return (
+    <Card className="w-[350px]">
+      <CardHeader>
+        <CardTitle>Вход</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form action={formAction} className="space-y-4">
+          <Input name="email" type="email" placeholder="Email" required />
+          <Input name="password" type="password" placeholder="Пароль" required />
+          
+          {state?.ok === false && (
+            <p className="text-sm text-destructive">{state.error}</p>
+          )}
+
+          <Button type="submit" className="w-full" disabled={isPending}>
+            {isPending ? "Вход..." : "Войти"}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+</file>
+
+<file path="src/components/admin/logout.tsx">
+import { signOutAction } from "@/actions/auth";
+import { Button } from "@/components/ui/button";
+import { LogOut } from "lucide-react"; // Иконка для красоты
+
+export function LogoutButton() {
+  return (
+    <form action={signOutAction}>
+      <Button variant="ghost" size="sm" type="submit" className="gap-2">
+        <LogOut className="h-4 w-4" />
+        Выйти
+      </Button>
+    </form>
+  );
+}
+</file>
+
+<file path="src/components/admin/style-editor.tsx">
+"use client";
+
+import Editor from "@monaco-editor/react";
+import { useTheme } from "next-themes"; // Если используешь темную тему
+
+interface StyleEditorProps {
+  initialValue: string;
+  onChange: (value: string | undefined) => void;
+}
+
+export function StyleEditor({ initialValue, onChange }: StyleEditorProps) {
+  const { theme } = useTheme();
+
+  return (
+    <div className="rounded-md border overflow-hidden">
+      <Editor
+        height="400px"
+        defaultLanguage="css"
+        theme={theme === "dark" ? "vs-dark" : "light"}
+        value={initialValue}
+        onChange={onChange}
+        options={{
+          minimap: { enabled: false },
+          fontSize: 14,
+          wordWrap: "on",
+          scrollBeyondLastLine: false,
+          automaticLayout: true,
+        }}
+      />
+    </div>
+  );
+}
+</file>
+
+<file path="src/components/Logo.tsx">
+import { sql } from '@/lib/db';
+
+export async function Logo() {
+  const [s] = await sql`SELECT logo_url, logo_custom_style FROM global_settings WHERE id = 1`;
+
+  return (
+    <img 
+      src={s?.logo_url || '/logo.svg'} 
+      alt="Logo"
+      className="object-contain"
+      style={{ 
+        width: 'var(--logo-width)', 
+        height: 'var(--logo-height)',
+        cssText: s?.logo_custom_style // Применяем кастомный стиль (напр. фильтр)
+      } as any}
+    />
+  );
+}
+</file>
+
+<file path="src/components/ui/card.tsx">
+import * as React from "react"
+
+import { cn } from "@/lib/utils"
+
+function Card({
+  className,
+  size = "default",
+  ...props
+}: React.ComponentProps<"div"> & { size?: "default" | "sm" }) {
+  return (
+    <div
+      data-slot="card"
+      data-size={size}
+      className={cn(
+        "group/card flex flex-col gap-4 overflow-hidden rounded-xl bg-card py-4 text-sm text-card-foreground ring-1 ring-foreground/10 has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:gap-3 data-[size=sm]:py-3 data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-header"
+      className={cn(
+        "group/card-header @container/card-header grid auto-rows-min items-start gap-1 rounded-t-xl px-4 group-data-[size=sm]/card:px-3 has-data-[slot=card-action]:grid-cols-[1fr_auto] has-data-[slot=card-description]:grid-rows-[auto_auto] [.border-b]:pb-4 group-data-[size=sm]/card:[.border-b]:pb-3",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-title"
+      className={cn(
+        "font-heading text-base leading-snug font-medium group-data-[size=sm]/card:text-sm",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-description"
+      className={cn("text-sm text-muted-foreground", className)}
+      {...props}
+    />
+  )
+}
+
+function CardAction({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-action"
+      className={cn(
+        "col-start-2 row-span-2 row-start-1 self-start justify-self-end",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function CardContent({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-content"
+      className={cn("px-4 group-data-[size=sm]/card:px-3", className)}
+      {...props}
+    />
+  )
+}
+
+function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-footer"
+      className={cn(
+        "flex items-center rounded-b-xl border-t bg-muted/50 p-4 group-data-[size=sm]/card:p-3",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+export {
+  Card,
+  CardHeader,
+  CardFooter,
+  CardTitle,
+  CardAction,
+  CardDescription,
+  CardContent,
+}
+</file>
+
+<file path="src/components/ui/input.tsx">
+import * as React from "react"
+
+import { cn } from "@/lib/utils"
+
+function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+  return (
+    <input
+      type={type}
+      data-slot="input"
+      className={cn(
+        "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none file:inline-flex file:h-6 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+export { Input }
+</file>
+
+<file path="src/components/ui/label.tsx">
+"use client"
+
+import * as React from "react"
+import { Label as LabelPrimitive } from "radix-ui"
+
+import { cn } from "@/lib/utils"
+
+function Label({
+  className,
+  ...props
+}: React.ComponentProps<typeof LabelPrimitive.Root>) {
+  return (
+    <LabelPrimitive.Root
+      data-slot="label"
+      className={cn(
+        "flex items-center gap-2 text-sm leading-none font-medium select-none group-data-[disabled=true]:pointer-events-none group-data-[disabled=true]:opacity-50 peer-disabled:cursor-not-allowed peer-disabled:opacity-50",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+export { Label }
+</file>
+
+<file path="src/components/ui/sonner.tsx">
+"use client"
+
+import { useTheme } from "next-themes"
+import { Toaster as Sonner, type ToasterProps } from "sonner"
+import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
+
+const Toaster = ({ ...props }: ToasterProps) => {
+  const { theme = "system" } = useTheme()
+
+  return (
+    <Sonner
+      theme={theme as ToasterProps["theme"]}
+      className="toaster group"
+      icons={{
+        success: (
+          <CircleCheckIcon className="size-4" />
+        ),
+        info: (
+          <InfoIcon className="size-4" />
+        ),
+        warning: (
+          <TriangleAlertIcon className="size-4" />
+        ),
+        error: (
+          <OctagonXIcon className="size-4" />
+        ),
+        loading: (
+          <Loader2Icon className="size-4 animate-spin" />
+        ),
+      }}
+      style={
+        {
+          "--normal-bg": "var(--popover)",
+          "--normal-text": "var(--popover-foreground)",
+          "--normal-border": "var(--border)",
+          "--border-radius": "var(--radius)",
+        } as React.CSSProperties
+      }
+      toastOptions={{
+        classNames: {
+          toast: "cn-toast",
+        },
+      }}
+      {...props}
+    />
+  )
+}
+
+export { Toaster }
+</file>
+
+<file path="src/lib/auth.ts">
+import { cookies } from "next/headers";
+import { SignJWT, jwtVerify, type JWTPayload } from "jose";
+
+export type SessionPayload = {
+  userId: string;
+  email: string;
+  role: string;
+};
+
+const SESSION_COOKIE = "session";
+const MAX_AGE_SEC = 60 * 60 * 24 * 7;
+
+function getSecretKey(): Uint8Array {
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) {
+    throw new Error("AUTH_SECRET is not set");
+  }
+  return new TextEncoder().encode(secret);
+}
+
+function payloadFromJwt(claims: JWTPayload): SessionPayload | null {
+  const { userId, email, role } = claims;
+  if (
+    typeof userId !== "string" ||
+    typeof email !== "string" ||
+    typeof role !== "string"
+  ) {
+    return null;
+  }
+  return { userId, email, role };
+}
+
+/**
+ * Подписывает payload в JWT (JWS) для записи в куку.
+ */
+export async function encrypt(payload: SessionPayload): Promise<string> {
+  const key = getSecretKey();
+  const exp = new Date(Date.now() + MAX_AGE_SEC * 1000);
+  return await new SignJWT({ ...payload })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime(exp)
+    .sign(key);
+}
+
+/**
+ * Проверяет подпись JWT и возвращает payload или null.
+ */
+export async function decrypt(
+  token: string
+): Promise<SessionPayload | null> {
+  try {
+    const key = getSecretKey();
+    const { payload } = await jwtVerify(token, key);
+    return payloadFromJwt(payload);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Создаёт сессию: httpOnly-кука с JWT (userId, email, role).
+ */
+export async function login(payload: SessionPayload): Promise<void> {
+  const token = await encrypt(payload);
+  const store = await cookies();
+  store.set(SESSION_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: MAX_AGE_SEC,
+  });
+}
+
+/**
+ * Завершает сессию: удаляет куку.
+ */
+export async function logout(): Promise<void> {
+  const store = await cookies();
+  store.delete(SESSION_COOKIE);
+}
+
+export { SESSION_COOKIE as SESSION_COOKIE_NAME };
+</file>
+
+<file path="src/lib/password.ts">
+import bcrypt from 'bcryptjs';
+
+export async function hashPassword(password: string) {
+  return await bcrypt.hash(password, 10);
+}
+
+export async function comparePassword(password: string, hash: string) {
+  return await bcrypt.compare(password, hash);
+}
+</file>
+
+<file path="src/proxy.ts">
+import { NextRequest, NextResponse } from 'next/server';
+import { decrypt, SESSION_COOKIE_NAME } from '@/lib/auth';
+
+export async function proxy(req: NextRequest) {
+  const path = req.nextUrl.pathname;
+  const isProtectedRoute = path.startsWith('/admin');
+
+  if (isProtectedRoute) {
+    const cookie = req.cookies.get(SESSION_COOKIE_NAME)?.value;
+    const session = await decrypt(cookie);
+
+    // Если нет сессии или роль не админ — на выход
+    if (!session || session.role !== 'admin') {
+      return NextResponse.redirect(new URL('/login', req.nextUrl));
+    }
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ['/admin/:path*'],
+};
+</file>
 
 <file path="src/app/api/navigation/route.ts">
 import { sql } from '@/lib/db';
@@ -136,115 +721,6 @@ export async function DELETE(req: Request) {
   await sql`DELETE FROM navigation WHERE id = ${id}`;
   return NextResponse.json({ success: true });
 }
-</file>
-
-<file path="components.json">
-{
-  "$schema": "https://ui.shadcn.com/schema.json",
-  "style": "radix-nova",
-  "rsc": true,
-  "tsx": true,
-  "tailwind": {
-    "config": "",
-    "css": "src/app/globals.css",
-    "baseColor": "neutral",
-    "cssVariables": true,
-    "prefix": ""
-  },
-  "iconLibrary": "lucide",
-  "rtl": false,
-  "aliases": {
-    "components": "@/components",
-    "utils": "@/lib/utils",
-    "ui": "@/components/ui",
-    "lib": "@/lib",
-    "hooks": "@/hooks"
-  },
-  "menuColor": "default",
-  "menuAccent": "subtle",
-  "registries": {}
-}
-</file>
-
-<file path="eslint.config.mjs">
-import { defineConfig, globalIgnores } from "eslint/config";
-import nextVitals from "eslint-config-next/core-web-vitals";
-import nextTs from "eslint-config-next/typescript";
-
-const eslintConfig = defineConfig([
-  ...nextVitals,
-  ...nextTs,
-  // Override default ignores of eslint-config-next.
-  globalIgnores([
-    // Default ignores of eslint-config-next:
-    ".next/**",
-    "out/**",
-    "build/**",
-    "next-env.d.ts",
-  ]),
-]);
-
-export default eslintConfig;
-</file>
-
-<file path="next.config.ts">
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  /* config options here */
-  reactCompiler: true,
-};
-
-export default nextConfig;
-</file>
-
-<file path="postcss.config.mjs">
-const config = {
-  plugins: {
-    "@tailwindcss/postcss": {},
-  },
-};
-
-export default config;
-</file>
-
-<file path="README.md">
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
-
-## Getting Started
-
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 </file>
 
 <file path="src/app/api/pages/route.ts">
@@ -335,34 +811,74 @@ export async function POST(req: Request) {
 }
 </file>
 
-<file path="src/app/api/upload/route.ts">
-import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
-import { NextResponse } from 'next/server';
+<file path="src/components/ui/button.tsx">
+import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
+import { Slot } from "radix-ui"
 
-export async function POST(request: Request): Promise<NextResponse> {
-  const body = (await request.json()) as HandleUploadBody;
+import { cn } from "@/lib/utils"
 
-  try {
-    const jsonResponse = await handleUpload({
-      body,
-      request,
-      onBeforeGenerateToken: async (pathname) => {
-        // Здесь можно добавить проверку авторизации админа
-        return {
-          allowedContentTypes: ['image/jpeg', 'image/png', 'image/gif'],
-          tokenPayload: JSON.stringify({}),
-        };
+const buttonVariants = cva(
+  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground [a]:hover:bg-primary/80",
+        outline:
+          "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+        secondary:
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80 aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+        ghost:
+          "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+        destructive:
+          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
+        link: "text-primary underline-offset-4 hover:underline",
       },
-      onUploadCompleted: async ({ blob, tokenPayload }) => {
-        console.log('Загрузка завершена!', blob.url);
+      size: {
+        default:
+          "h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+        xs: "h-6 gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
+        sm: "h-7 gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
+        lg: "h-9 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3",
+        icon: "size-8",
+        "icon-xs":
+          "size-6 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-3",
+        "icon-sm":
+          "size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
+        "icon-lg": "size-9",
       },
-    });
-
-    return NextResponse.json(jsonResponse);
-  } catch (error) {
-    return NextResponse.json({ error: (error as Error).message }, { status: 400 });
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
   }
+)
+
+function Button({
+  className,
+  variant = "default",
+  size = "default",
+  asChild = false,
+  ...props
+}: React.ComponentProps<"button"> &
+  VariantProps<typeof buttonVariants> & {
+    asChild?: boolean
+  }) {
+  const Comp = asChild ? Slot.Root : "button"
+
+  return (
+    <Comp
+      data-slot="button"
+      data-variant={variant}
+      data-size={size}
+      className={cn(buttonVariants({ variant, size, className }))}
+      {...props}
+    />
+  )
 }
+
+export { Button, buttonVariants }
 </file>
 
 <file path="src/lib/db.ts">
@@ -377,90 +893,6 @@ export async function getSetting(key: string, defaultValue: string = '') {
   const [setting] = await sql`SELECT value FROM settings WHERE key = ${key}`;
   return setting?.value || defaultValue;
 }
-</file>
-
-<file path="tsconfig.json">
-{
-  "compilerOptions": {
-    "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "noEmit": true,
-    "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "react-jsx",
-    "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
-    "paths": {
-      "@/*": ["./src/*"]
-    }
-  },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts",
-    "**/*.mts"
-  ],
-  "exclude": ["node_modules"]
-}
-</file>
-
-<file path=".gitignore">
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-
-.vercel
-.env*.local
 </file>
 
 <file path="src/app/admin/appearance/page.tsx">
@@ -527,158 +959,6 @@ export default function AppearancePage() {
           </div>
         </section>
       </div>
-    </div>
-  );
-}
-</file>
-
-<file path="src/app/admin/navigation/page.tsx">
-'use client';
-import { useState, useEffect } from 'react';
-import { Plus, Trash2, GripVertical } from 'lucide-react';
-import { 
-  DndContext, 
-  closestCenter, 
-  KeyboardSensor, 
-  PointerSensor, 
-  useSensor, 
-  useSensors,
-  DragEndEvent 
-} from '@dnd-kit/core';
-import { 
-  arrayMove, 
-  SortableContext, 
-  sortableKeyboardCoordinates, 
-  verticalListSortingStrategy,
-  useSortable 
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-
-// --- КОМПОНЕНТ СОРТИРУЕМОГО ПУНКТА ---
-function SortableNavItem({ item, onDelete }: { item: any, onDelete: (id: number) => void }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging
-  } = useSortable({ id: item.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 50 : 0,
-  };
-
-  return (
-    <div 
-      ref={setNodeRef} 
-      style={style}
-      className={`p-6 bg-card text-card-foreground border border-border rounded-3xl flex items-center gap-6 group transition-all shadow-sm ${isDragging ? 'opacity-50 scale-[1.02] border-primary shadow-xl' : 'hover:border-primary/30'}`}
-    >
-       {/* Хэндл для перетаскивания */}
-       <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-2 -ml-2 hover:bg-muted rounded-xl transition-colors">
-          <GripVertical className="text-muted-foreground/30 group-hover:text-muted-foreground transition-colors" />
-       </div>
-
-       <div className="flex-1">
-          <div className="text-foreground font-bold uppercase tracking-tight text-sm">{item.label}</div>
-          <div className="text-[10px] text-muted-foreground font-mono opacity-60 italic">{item.url}</div>
-       </div>
-
-       <button 
-         onClick={() => onDelete(item.id)}
-         className="text-muted-foreground hover:text-destructive transition-all p-2 rounded-lg hover:bg-destructive/10 outline-none focus-visible:ring-2 focus-visible:ring-destructive"
-       >
-         <Trash2 size={18}/>
-       </button>
-    </div>
-  );
-}
-
-// --- ОСНОВНАЯ СТРАНИЦА ---
-export default function NavManager() {
-  const [items, setItems] = useState<any[]>([]);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
-
-  const loadNav = () => fetch('/api/navigation').then(res => res.json()).then(setItems);
-  useEffect(() => { loadNav(); }, []);
-
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
-    
-    if (over && active.id !== over.id) {
-      const oldIndex = items.findIndex((i) => i.id === active.id);
-      const newIndex = items.findIndex((i) => i.id === over.id);
-      
-      const newOrder = arrayMove(items, oldIndex, newIndex);
-      setItems(newOrder); // Мгновенное обновление UI
-
-      // Сохраняем новый порядок в БД
-      const updateData = newOrder.map((item, index) => ({
-        id: item.id,
-        order_index: index + 1
-      }));
-
-      await fetch('/api/navigation', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: updateData })
-      });
-    }
-  };
-
-  const addLink = async () => {
-    const label = prompt('Название:');
-    const url = prompt('URL (напр. /about):');
-    if(label && url) {
-      await fetch('/api/navigation', { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ label, url }) 
-      });
-      loadNav();
-    }
-  };
-
-  const deleteLink = async (id: number) => {
-    if (confirm('Удалить пункт?')) {
-      await fetch('/api/navigation', { 
-        method: 'DELETE', 
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id }) 
-      });
-      loadNav();
-    }
-  };
-
-  return (
-    <div className="max-w-4xl">
-      <div className="flex justify-between items-center mb-12">
-        <h2 className="text-3xl font-black text-foreground uppercase italic tracking-tighter">Навигация</h2>
-        <button onClick={addLink} className="bg-primary text-primary-foreground px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:opacity-90 transition-all shadow-lg shadow-primary/20">
-          <Plus size={18}/> Добавить пункт
-        </button>
-      </div>
-      
-      <DndContext 
-        sensors={sensors} 
-        collisionDetection={closestCenter} 
-        onDragEnd={handleDragEnd}
-      >
-        <SortableContext items={items} strategy={verticalListSortingStrategy}>
-          <div className="space-y-3">
-            {items.map((item) => (
-              <SortableNavItem key={item.id} item={item} onDelete={deleteLink} />
-            ))}
-          </div>
-        </SortableContext>
-      </DndContext>
     </div>
   );
 }
@@ -1048,14 +1328,240 @@ export async function POST(request: Request) {
 }
 </file>
 
+<file path="src/app/api/upload/route.ts">
+import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
+import { NextResponse } from 'next/server';
+
+export async function POST(request: Request): Promise<NextResponse> {
+  const body = (await request.json()) as HandleUploadBody;
+
+  try {
+    const jsonResponse = await handleUpload({
+      body,
+      request,
+      onBeforeGenerateToken: async (pathname) => {
+        // Здесь можно добавить проверку авторизации админа
+        return {
+          allowedContentTypes: ['image/jpeg', 'image/png', 'image/gif'],
+          tokenPayload: JSON.stringify({}),
+					addRandomSuffix: true,
+        };
+      },
+      onUploadCompleted: async ({ blob, tokenPayload }) => {
+        console.log('Загрузка завершена!', blob.url);
+      },
+    });
+
+    return NextResponse.json(jsonResponse);
+  } catch (error) {
+    return NextResponse.json({ error: (error as Error).message }, { status: 400 });
+  }
+}
+</file>
+
+<file path="src/components/theme-provider.tsx">
+'use client'
+
+import * as React from "react"
+import { ThemeProvider as NextThemesProvider } from "next-themes"
+
+export function ThemeProvider({
+  children,
+  ...props
+}: React.ComponentProps<typeof NextThemesProvider>) {
+  return <NextThemesProvider {...props}>{children}</NextThemesProvider>
+}
+</file>
+
+<file path="src/components/ThemeToggle.tsx">
+'use client'
+import { Moon, Sun } from "lucide-react"
+import { useTheme } from "next-themes"
+
+export function ThemeToggle() {
+  const { theme, setTheme } = useTheme()
+
+  return (
+    <button
+      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+      className="relative p-2 border border-border rounded-full g-background hover:bg-accent hover:text-accent-foreground transition-all"
+      aria-label="Переключить тему"
+    >
+      <Sun className="h-3 w-3 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0 text-foreground" />
+      <Moon className="absolute top-2 left-2 h-3 w-3 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100 text-foreground" />
+      <span className="sr-only">Переключить тему</span>
+    </button>
+  )
+}
+</file>
+
+<file path="src/lib/utils.ts">
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+</file>
+
+<file path="src/app/admin/navigation/page.tsx">
+'use client';
+import { useState, useEffect } from 'react';
+import { Plus, Trash2, GripVertical } from 'lucide-react';
+import { 
+  DndContext, 
+  closestCenter, 
+  KeyboardSensor, 
+  PointerSensor, 
+  useSensor, 
+  useSensors,
+  DragEndEvent 
+} from '@dnd-kit/core';
+import { 
+  arrayMove, 
+  SortableContext, 
+  sortableKeyboardCoordinates, 
+  verticalListSortingStrategy,
+  useSortable 
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+// --- КОМПОНЕНТ СОРТИРУЕМОГО ПУНКТА ---
+function SortableNavItem({ item, onDelete }: { item: any, onDelete: (id: number) => void }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: item.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 0,
+  };
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      style={style}
+      className={`p-6 bg-card text-card-foreground border border-border rounded-3xl flex items-center gap-6 group transition-all shadow-sm ${isDragging ? 'opacity-50 scale-[1.02] border-primary shadow-xl' : 'hover:border-primary/30'}`}
+    >
+       {/* Хэндл для перетаскивания */}
+       <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-2 -ml-2 hover:bg-muted rounded-xl transition-colors">
+          <GripVertical className="text-muted-foreground/30 group-hover:text-muted-foreground transition-colors" />
+       </div>
+
+       <div className="flex-1">
+          <div className="text-foreground font-bold uppercase tracking-tight text-sm">{item.label}</div>
+          <div className="text-[10px] text-muted-foreground font-mono opacity-60 italic">{item.url}</div>
+       </div>
+
+       <button 
+         onClick={() => onDelete(item.id)}
+         className="text-muted-foreground hover:text-destructive transition-all p-2 rounded-lg hover:bg-destructive/10 outline-none focus-visible:ring-2 focus-visible:ring-destructive"
+       >
+         <Trash2 size={18}/>
+       </button>
+    </div>
+  );
+}
+
+// --- ОСНОВНАЯ СТРАНИЦА ---
+export default function NavManager() {
+  const [items, setItems] = useState<any[]>([]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const loadNav = () => fetch('/api/navigation').then(res => res.json()).then(setItems);
+  useEffect(() => { loadNav(); }, []);
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      const oldIndex = items.findIndex((i) => i.id === active.id);
+      const newIndex = items.findIndex((i) => i.id === over.id);
+      
+      const newOrder = arrayMove(items, oldIndex, newIndex);
+      setItems(newOrder); // Мгновенное обновление UI
+
+      // Сохраняем новый порядок в БД
+      const updateData = newOrder.map((item, index) => ({
+        id: item.id,
+        order_index: index + 1
+      }));
+
+      await fetch('/api/navigation', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: updateData })
+      });
+    }
+  };
+
+  const addLink = async () => {
+    const label = prompt('Название:');
+    const url = prompt('URL (напр. /about):');
+    if(label && url) {
+      await fetch('/api/navigation', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label, url }) 
+      });
+      loadNav();
+    }
+  };
+
+  const deleteLink = async (id: number) => {
+    if (confirm('Удалить пункт?')) {
+      await fetch('/api/navigation', { 
+        method: 'DELETE', 
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }) 
+      });
+      loadNav();
+    }
+  };
+
+  return (
+    <div className="max-w-4xl">
+      <div className="flex justify-between items-center mb-12">
+        <h2 className="text-3xl font-black text-foreground uppercase italic tracking-tighter">Навигация</h2>
+        <button onClick={addLink} className="bg-primary text-primary-foreground px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:opacity-90 transition-all shadow-lg shadow-primary/20">
+          <Plus size={18}/> Добавить пункт
+        </button>
+      </div>
+      
+      <DndContext 
+        sensors={sensors} 
+        collisionDetection={closestCenter} 
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={items} strategy={verticalListSortingStrategy}>
+          <div className="space-y-3">
+            {items.map((item) => (
+              <SortableNavItem key={item.id} item={item} onDelete={deleteLink} />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
+    </div>
+  );
+}
+</file>
+
 <file path="src/app/globals.css">
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
-
-
 
 :root {
   --background: oklch(0.9383 0.0042 236.4993);
@@ -1064,7 +1570,7 @@ export async function POST(request: Request) {
   --card-foreground: oklch(0.3211 0 0);
   --popover: oklch(1.0000 0 0);
   --popover-foreground: oklch(0.3211 0 0);
-  --primary: oklch(0.6397 0.1720 36.4421);
+  --primary: oklch(0.7319 0.1858 52.9847);
   --primary-foreground: oklch(1.0000 0 0);
   --secondary: oklch(0.9670 0.0029 264.5419);
   --secondary-foreground: oklch(0.4461 0.0263 256.8018);
@@ -1072,11 +1578,11 @@ export async function POST(request: Request) {
   --muted-foreground: oklch(0.5510 0.0234 264.3637);
   --accent: oklch(0.9119 0.0222 243.8174);
   --accent-foreground: oklch(0.3791 0.1378 265.5222);
-  --destructive: oklch(0.6368 0.2078 25.3313);
+  --destructive: oklch(0.5210 0.2138 29.2339);
   --destructive-foreground: oklch(1.0000 0 0);
   --border: oklch(0.9022 0.0052 247.8822);
   --input: oklch(0.9700 0.0029 264.5420);
-  --ring: oklch(0.6397 0.1720 36.4421);
+  --ring: oklch(0.7319 0.1858 52.9847);
   --chart-1: oklch(0.7156 0.0605 248.6845);
   --chart-2: oklch(0.7875 0.0917 35.9616);
   --chart-3: oklch(0.5778 0.0759 254.1573);
@@ -1084,15 +1590,15 @@ export async function POST(request: Request) {
   --chart-5: oklch(0.4241 0.0952 264.0306);
   --sidebar: oklch(0.9030 0.0046 258.3257);
   --sidebar-foreground: oklch(0.3211 0 0);
-  --sidebar-primary: oklch(0.6397 0.1720 36.4421);
+  --sidebar-primary: oklch(0.7319 0.1858 52.9847);
   --sidebar-primary-foreground: oklch(1.0000 0 0);
   --sidebar-accent: oklch(0.9119 0.0222 243.8174);
   --sidebar-accent-foreground: oklch(0.3791 0.1378 265.5222);
   --sidebar-border: oklch(0.9276 0.0058 264.5313);
-  --sidebar-ring: oklch(0.6397 0.1720 36.4421);
-  --font-sans: Inter, sans-serif;
-  --font-serif: Source Serif 4, serif;
-  --font-mono: JetBrains Mono, monospace;
+  --sidebar-ring: oklch(0.7319 0.1858 52.9847);
+  --font-sans: Montserrat, ui-sans-serif, sans-serif, system-ui;
+  --font-serif: Nunito, ui-sans-serif, sans-serif, system-ui;
+  --font-mono: Montserrat, ui-sans-serif, sans-serif, system-ui;
   --radius: 0.75rem;
   --shadow-x: 0px;
   --shadow-y: 1px;
@@ -1108,12 +1614,15 @@ export async function POST(request: Request) {
   --shadow-lg: 0px 1px 3px 0px hsl(0 0% 0% / 0.10), 0px 4px 6px -1px hsl(0 0% 0% / 0.10);
   --shadow-xl: 0px 1px 3px 0px hsl(0 0% 0% / 0.10), 0px 8px 10px -1px hsl(0 0% 0% / 0.10);
   --shadow-2xl: 0px 1px 3px 0px hsl(0 0% 0% / 0.25);
-  --tracking-normal: 0em;
+  --tracking-normal: 0.05em;
   --spacing: 0.25rem;
+  --shadow-offset-x: 0px;
+  --shadow-offset-y: 1px;
+  --letter-spacing: 0.05em;
 }
 
 .dark {
-  --background: oklch(0.2598 0.0306 262.6666);
+  --background: oklch(0.2183 0.0263 237.8699);
   --foreground: oklch(0.9219 0 0);
   --card: oklch(0.3106 0.0301 268.6365);
   --card-foreground: oklch(0.9219 0 0);
@@ -1145,9 +1654,9 @@ export async function POST(request: Request) {
   --sidebar-accent-foreground: oklch(0.8823 0.0571 254.1284);
   --sidebar-border: oklch(0.3843 0.0301 269.7337);
   --sidebar-ring: oklch(0.6397 0.1720 36.4421);
-  --font-sans: Inter, sans-serif;
-  --font-serif: Source Serif 4, serif;
-  --font-mono: JetBrains Mono, monospace;
+  --font-sans: Montserrat, ui-sans-serif, sans-serif, system-ui;
+  --font-serif: Nunito, ui-sans-serif, sans-serif, system-ui;
+  --font-mono: Montserrat, ui-sans-serif, sans-serif, system-ui;
   --radius: 0.75rem;
   --shadow-x: 0px;
   --shadow-y: 1px;
@@ -1163,6 +1672,10 @@ export async function POST(request: Request) {
   --shadow-lg: 0px 1px 3px 0px hsl(0 0% 0% / 0.10), 0px 4px 6px -1px hsl(0 0% 0% / 0.10);
   --shadow-xl: 0px 1px 3px 0px hsl(0 0% 0% / 0.10), 0px 8px 10px -1px hsl(0 0% 0% / 0.10);
   --shadow-2xl: 0px 1px 3px 0px hsl(0 0% 0% / 0.25);
+  --shadow-offset-x: 0px;
+  --shadow-offset-y: 1px;
+  --letter-spacing: 0.05em;
+  --spacing: 0.25rem;
 }
 
 @theme inline {
@@ -1199,9 +1712,9 @@ export async function POST(request: Request) {
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-mono);
-  --font-serif: var(--font-serif);
+  --font-sans: Montserrat, ui-sans-serif, sans-serif, system-ui;
+  --font-mono: Montserrat, ui-sans-serif, sans-serif, system-ui;
+  --font-serif: Nunito, ui-sans-serif, sans-serif, system-ui;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -1216,119 +1729,78 @@ export async function POST(request: Request) {
   --shadow-lg: var(--shadow-lg);
   --shadow-xl: var(--shadow-xl);
   --shadow-2xl: var(--shadow-2xl);
+
+  --tracking-tighter: calc(var(--tracking-normal) - 0.05em);
+  --tracking-tight: calc(var(--tracking-normal) - 0.025em);
+  --tracking-normal: var(--tracking-normal);
+  --tracking-wide: calc(var(--tracking-normal) + 0.025em);
+  --tracking-wider: calc(var(--tracking-normal) + 0.05em);
+  --tracking-widest: calc(var(--tracking-normal) + 0.1em);
+  --radius: 0.75rem;
+  --spacing: var(--spacing);
+  --letter-spacing: var(--letter-spacing);
+  --shadow-offset-y: var(--shadow-offset-y);
+  --shadow-offset-x: var(--shadow-offset-x);
+  --shadow-spread: var(--shadow-spread);
+  --shadow-blur: var(--shadow-blur);
+  --shadow-opacity: var(--shadow-opacity);
+  --color-shadow-color: var(--shadow-color);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
 @layer base {
-
   * {
     @apply border-border outline-ring/50;
   }
   html {
     @apply font-sans;
   }
-	  body {
-   
+  body {
     @apply bg-background text-foreground;
+    letter-spacing: var(--tracking-normal);
   }
 }
 </file>
 
-<file path="src/components/Header.tsx">
-import { sql } from '@/lib/db';
-import { ThemeToggle } from "./ThemeToggle";
+<file path="src/components/SkillsGrid.tsx">
+import { Cpu } from 'lucide-react';
 
-export default async function Header() {
-  // Получаем логотип и меню из базы
-  const [nav, logoSetting] = await Promise.all([
-    sql`SELECT * FROM navigation ORDER BY order_index ASC`,
-    sql`SELECT value FROM settings WHERE key = 'logo_data' LIMIT 1`
-  ]);
-
-  const logoData = logoSetting[0]?.value || "ВЕБ.КОДЕР";
-
+export default function SkillsGrid({ skills }: { skills: any[] }) {
   return (
-    <header className="fixed top-0 w-full z-50 border-b border-border bg-background/80 backdrop-blur-xl text-foreground transition-all duration-300">
-      <div className="max-w-7xl mx-auto px-8 h-20 flex justify-between items-center">
-        {/* ЛОГОТИП (SVG или Текст) */}
-        <div 
-          className="h-8 flex items-center gap-2 font-black tracking-tighter text-primary uppercase italic"
-          dangerouslySetInnerHTML={{ __html: logoData.startsWith('<svg') ? logoData : `<span>${logoData}</span>` }}
-        />
-
-        {/* НАВИГАЦИЯ */}
-        <nav className="hidden md:flex gap-10 items-center">
-          {nav.map((item) => (
-            <a 
-              key={item.id} 
-              href={item.url} 
-              className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground hover:text-primary transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-            >
-              {item.label}
-            </a>
-          ))}
-          
-          {/* ПЕРЕКЛЮЧАТЕЛЬ ТЕМЫ */}
-          <ThemeToggle />
-        </nav>
-
-        {/* ПАНЕЛЬ УПРАВЛЕНИЯ (Мобильная версия) */}
-        <a href="/admin" className="md:hidden text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 hover:text-primary transition-all">
-          Админ
-        </a>
+    <section className="py-24 max-w-7xl mx-auto px-8">
+      <h2 className="text-6xl font-black tracking-tighter mb-20 italic text-muted-foreground/10 uppercase select-none">
+        Стек технологий
+      </h2>
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
+        {skills.map(skill => (
+          <div 
+            key={skill.id} 
+            className="group relative bg-card text-card-foreground border border-border p-8 rounded-[2rem] hover:bg-primary hover:text-primary-foreground transition-all duration-500 cursor-default shadow-sm hover:shadow-lg hover:shadow-primary/20 active:scale-[0.98]"
+          >
+            <div className="text-primary group-hover:text-primary-foreground transition-colors mb-4">
+               {/* Иконка навыка */}
+               <Cpu size={32} strokeWidth={1.5} />
+            </div>
+            <h4 className="font-bold text-foreground group-hover:text-primary-foreground group-hover:translate-x-1 transition-all duration-300 uppercase tracking-tight">
+              {skill.name}
+            </h4>
+            <div className="absolute bottom-4 right-6 text-[10px] font-black opacity-0 group-hover:opacity-40 transition-opacity uppercase tracking-widest font-mono">
+              {skill.level}%
+            </div>
+          </div>
+        ))}
       </div>
-    </header>
+    </section>
   );
-}
-</file>
-
-<file path="src/components/theme-provider.tsx">
-'use client'
-
-import * as React from "react"
-import { ThemeProvider as NextThemesProvider } from "next-themes"
-
-export function ThemeProvider({
-  children,
-  ...props
-}: React.ComponentProps<typeof NextThemesProvider>) {
-  return <NextThemesProvider {...props}>{children}</NextThemesProvider>
-}
-</file>
-
-<file path="src/components/ThemeToggle.tsx">
-'use client'
-import { Moon, Sun } from "lucide-react"
-import { useTheme } from "next-themes"
-
-export function ThemeToggle() {
-  const { theme, setTheme } = useTheme()
-
-  return (
-    <button
-      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-      className="relative p-2 rounded-xl bg-background border border-border hover:bg-accent hover:text-accent-foreground transition-all shadow-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background outline-none active:scale-95"
-      aria-label="Переключить тему"
-    >
-      <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0 text-foreground" />
-      <Moon className="absolute top-2 left-2 h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100 text-foreground" />
-      <span className="sr-only">Переключить тему</span>
-    </button>
-  )
-}
-</file>
-
-<file path="src/lib/utils.ts">
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
 }
 </file>
 
 <file path="src/app/admin/branding/page.tsx">
 'use client';
 import { useState } from 'react';
+import { upload } from '@vercel/blob/client'; 
 import { 
   Palette, 
   LayoutDashboard, 
@@ -1336,15 +1808,47 @@ import {
   FileText, 
   Layers, 
   Shield, 
-  Settings 
+  Settings,
+	Upload, 
+	Loader2, 
+	ImageIcon	
 } from 'lucide-react';
 
 export default function BrandingPage() {
   const [logoType, setLogoType] = useState('svg');
 
+	const [isUploading, setIsUploading] = useState(false);
+  const [currentLogoUrl, setCurrentLogoUrl] = useState('');
+
   const save = async (key: string, value: string) => {
     await fetch('/api/settings', { method: 'POST', body: JSON.stringify({ key, value }) });
     alert(`Настройка сохранена: ${key}`);
+  };
+
+	const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      // 1. Загружаем файл в облако Vercel Blob
+      const newBlob = await upload(file.name, file, {
+        access: 'public',
+        handleUploadUrl: '/api/upload', // Твой существующий роут
+      });
+
+      // 2. Сохраняем URL в базу данных
+      await save('logo_image_url', newBlob.url);
+      await save('logo_type', 'image'); // Помечаем, что теперь используем картинку
+      
+      setCurrentLogoUrl(newBlob.url);
+      alert('Логотип-картинка сохранен!');
+    } catch (error) {
+      console.error('Ошибка загрузки:', error);
+      alert('Ошибка при загрузке файла');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -1421,26 +1925,61 @@ export default function BrandingPage() {
           <section className="bg-card text-card-foreground border border-border p-8 rounded-[2rem] shadow-sm">
             <h2 className="text-xl font-bold mb-6 text-foreground">Настройка логотипа</h2>
             <div className="space-y-6">
-              <div className="flex gap-4 p-1 bg-muted rounded-2xl w-fit">
-                <button 
-                  onClick={() => setLogoType('svg')} 
-                  className={`px-6 py-2 rounded-xl text-xs font-bold transition-all ${logoType === 'svg' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-                >
-                  SVG-код
-                </button>
-                <button 
-                  onClick={() => setLogoType('image')} 
-                  className={`px-6 py-2 rounded-xl text-xs font-bold transition-all ${logoType === 'image' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-                >
-                  Изображение
-                </button>
-              </div>
-              <textarea 
-                className="w-full h-48 bg-background border border-input rounded-2xl p-6 font-mono text-primary text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring ring-offset-background transition-all"
-                placeholder="Вставьте SVG-код вашего логотипа..."
-                onBlur={(e) => save('logo_data', e.target.value)}
-              />
+          {/* Переключатель */}
+          <div className="flex gap-4 p-1 bg-muted rounded-2xl w-fit">
+            <button 
+              onClick={() => { setLogoType('svg'); save('logo_type', 'svg'); }} 
+              className={`px-6 py-2 rounded-xl text-xs font-bold transition-all ${logoType === 'svg' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}
+            >
+              SVG-код
+            </button>
+            <button 
+              onClick={() => { setLogoType('image'); save('logo_type', 'image'); }} 
+              className={`px-6 py-2 rounded-xl text-xs font-bold transition-all ${logoType === 'image' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}
+            >
+              Изображение (PNG/JPG)
+            </button>
+          </div>
+
+          {logoType === 'svg' ? (
+            <textarea 
+              className="w-full h-48 bg-background border border-input rounded-2xl p-6 font-mono text-primary text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring transition-all"
+              placeholder="Вставьте SVG-код..."
+              onBlur={(e) => save('logo_data', e.target.value)}
+            />
+          ) : (
+            <div className="space-y-4">
+              {/* Поле загрузки */}
+              <label className="relative border-2 border-dashed border-border rounded-3xl p-12 flex flex-col items-center justify-center hover:bg-muted hover:border-primary/50 transition-all cursor-pointer group">
+                <input 
+                  type="file" 
+                  className="absolute inset-0 opacity-0 cursor-pointer" 
+                  onChange={handleFileUpload}
+                  accept="image/*"
+                  disabled={isUploading}
+                />
+                
+                {isUploading ? (
+                  <Loader2 className="animate-spin text-primary mb-4" size={32} />
+                ) : (
+                  <Upload className="text-muted-foreground group-hover:text-primary mb-4" size={32} />
+                )}
+                
+                <span className="font-bold text-foreground">
+                  {isUploading ? 'Загрузка...' : 'Выбрать PNG или JPG'}
+                </span>
+                <span className="text-xs text-muted-foreground mt-2 uppercase tracking-widest">Макс. 4MB</span>
+              </label>
+
+              {/* Мини-превью загруженного логотипа */}
+              {currentLogoUrl && (
+                <div className="p-4 bg-muted rounded-2xl flex items-center justify-center border border-border">
+                  <img src={currentLogoUrl} alt="Preview" className="h-12 object-contain" />
+                </div>
+              )}
             </div>
+          )}
+        </div>
           </section>
         </div>
 
@@ -1466,6 +2005,7 @@ export default function BrandingPage() {
 <file path="src/app/admin/layout.tsx">
 'use client';
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { LogoutButton } from "@/components/admin/logout";
 import Link from 'next/link';
 import Image from 'next/image';
 import { LayoutDashboard, Rocket, FileText, Share2, Layers, Shield, Palette } from 'lucide-react';
@@ -1514,7 +2054,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
            
            <div className="flex items-center gap-4">
               <ThemeToggle />
-              <div className="w-8 h-8 rounded-full bg-primary border border-input shadow-lg shadow-primary/20 transition-transform active:scale-95 cursor-pointer" />
+              <LogoutButton />
            </div>
         </header>
 
@@ -1523,39 +2063,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </main>
       </div>
     </div>
-  );
-}
-</file>
-
-<file path="src/components/SkillsGrid.tsx">
-import { Cpu } from 'lucide-react';
-
-export default function SkillsGrid({ skills }: { skills: any[] }) {
-  return (
-    <section className="py-24 max-w-7xl mx-auto px-8">
-      <h2 className="text-6xl font-black tracking-tighter mb-20 italic text-muted-foreground/10 uppercase select-none">
-        Стек технологий
-      </h2>
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
-        {skills.map(skill => (
-          <div 
-            key={skill.id} 
-            className="group relative bg-card text-card-foreground border border-border p-8 rounded-[2rem] hover:bg-primary hover:text-primary-foreground transition-all duration-500 cursor-default shadow-sm hover:shadow-lg hover:shadow-primary/20 active:scale-[0.98]"
-          >
-            <div className="text-primary group-hover:text-primary-foreground transition-colors mb-4">
-               {/* Иконка навыка */}
-               <Cpu size={32} strokeWidth={1.5} />
-            </div>
-            <h4 className="font-bold text-foreground group-hover:text-primary-foreground group-hover:translate-x-1 transition-all duration-300 uppercase tracking-tight">
-              {skill.name}
-            </h4>
-            <div className="absolute bottom-4 right-6 text-[10px] font-black opacity-0 group-hover:opacity-40 transition-opacity uppercase tracking-widest font-mono">
-              {skill.level}%
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
   );
 }
 </file>
@@ -1592,7 +2099,7 @@ export default async function AdminDashboard() {
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Проекты */}
-        <div className="bg-card text-card-foreground border border-border p-8 rounded-[2rem] flex items-center justify-between shadow-sm transition-all hover:border-primary/20">
+        <div className="bg-card text-card-foreground p-8 rounded-[2rem] flex items-center justify-between">
           <div>
             <div className="text-4xl font-black text-foreground">{projectsCount}</div>
             <div className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mt-1">
@@ -1603,7 +2110,7 @@ export default async function AdminDashboard() {
         </div>
 
         {/* Навыки */}
-        <div className="bg-card text-card-foreground border border-border p-8 rounded-[2rem] flex items-center justify-between shadow-sm transition-all hover:border-primary/20">
+        <div className="bg-card text-card-foreground p-8 rounded-[2rem] flex items-center justify-between">
           <div>
             <div className="text-4xl font-black text-foreground">{skillsCount}</div>
             <div className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mt-1">
@@ -1614,7 +2121,7 @@ export default async function AdminDashboard() {
         </div>
 
         {/* Сообщения (Акцентная карточка) */}
-        <div className="bg-card text-card-foreground border border-primary/20 p-8 rounded-[2rem] flex items-center justify-between shadow-lg shadow-primary/5 transition-all hover:border-primary">
+        <div className="bg-card text-card-foreground p-8 rounded-[2rem] flex items-center justify-between">
           <div>
             <div className="text-4xl font-black text-primary">{newMessages}</div>
             <div className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mt-1">
@@ -1629,50 +2136,121 @@ export default async function AdminDashboard() {
 }
 </file>
 
-<file path="package.json">
-{
-  "name": "my-portfolio",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
-  },
-  "dependencies": {
-    "@dnd-kit/core": "^6.3.1",
-    "@dnd-kit/sortable": "^10.0.0",
-    "@dnd-kit/utilities": "^3.2.2",
-    "@hookform/resolvers": "^5.2.2",
-    "@vercel/blob": "^2.3.1",
-    "@vercel/postgres": "^0.10.0",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "framer-motion": "^12.38.0",
-    "lucide-react": "^0.577.0",
-    "next": "16.2.0",
-    "next-themes": "^0.4.6",
-    "postgres": "^3.4.8",
-    "radix-ui": "^1.4.3",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "shadcn": "^4.1.0",
-    "sonner": "^2.0.7",
-    "tailwind-merge": "^3.5.0",
-    "tw-animate-css": "^1.4.0"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "babel-plugin-react-compiler": "1.0.0",
-    "eslint": "^9",
-    "eslint-config-next": "16.2.0",
-    "tailwindcss": "^4",
-    "typescript": "^5"
-  }
+<file path="src/components/Header.tsx">
+import { sql } from '@/lib/db';
+import { ThemeToggle } from "./ThemeToggle";
+
+export default async function Header() {
+  // Получаем логотип и меню из базы
+  const [nav, settings] = await Promise.all([
+    sql`SELECT * FROM navigation ORDER BY order_index ASC`,
+    sql`SELECT key, value FROM settings WHERE key IN ('logo_data', 'logo_type', 'logo_image_url')`
+  ]);
+
+  const cfg = Object.fromEntries(settings.map(s => [s.key, s.value]));
+	
+  const logoType = cfg.logo_type || 'svg';
+  const logoData = cfg.logo_data || 'ВЕБ.КОДЕР';
+  const logoImageUrl = cfg.logo_image_url;
+
+  return (
+    <header className="fixed top-0 w-full z-50  bg-background/80 backdrop-blur-xl text-foreground transition-all duration-300">
+      <div className="max-w-7xl mx-auto px-8 h-28 flex justify-between items-center">
+        {/* ЛОГОТИП (SVG или Текст) */}
+        <div className="h-28 flex items-center">
+					{logoType === 'image' && logoImageUrl ? (
+						<img 
+							src={logoImageUrl} 
+							alt="Logo" 
+							className="w-full h-28 object-contain " 
+						/>
+					) : (
+						<div 
+							className="h-8 flex items-center gap-2 font-black tracking-tighter text-primary uppercase italic"
+							dangerouslySetInnerHTML={{ 
+								__html: logoData.startsWith('<svg') ? logoData : `<span>${logoData}</span>` 
+							}}
+						/>
+					)}
+			</div>
+
+        {/* НАВИГАЦИЯ */}
+        <nav className="hidden md:flex gap-10 items-center">
+          {nav.map((item) => (
+            <a 
+              key={item.id} 
+              href={item.url} 
+              className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground hover:text-primary transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+            >
+              {item.label}
+            </a>
+          ))}
+          
+          {/* ПЕРЕКЛЮЧАТЕЛЬ ТЕМЫ */}
+          <ThemeToggle />
+        </nav>
+
+        {/* ПАНЕЛЬ УПРАВЛЕНИЯ (Мобильная версия) */}
+        <a href="/admin" className="md:hidden text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 hover:text-primary transition-all">
+          Админ
+        </a>
+      </div>
+    </header>
+  );
+}
+</file>
+
+<file path="src/app/api/setup/route.ts">
+import postgres from 'postgres';
+import { NextResponse } from 'next/server';
+
+export async function GET() {
+  const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
+  try {
+    // 1. БРЕНДИНГ И ДИЗАЙН
+    await sql`CREATE TABLE IF NOT EXISTS settings (id SERIAL PRIMARY KEY, key TEXT UNIQUE, value TEXT);`;
+    await sql`
+  CREATE TABLE IF NOT EXISTS messages (
+    id SERIAL PRIMARY KEY,
+    name TEXT,
+    email TEXT,
+    message TEXT,
+    is_read BOOLEAN DEFAULT false, -- Убеждаемся, что колонка называется именно так
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+`;
+    // 2. КОНТЕНТ (ПРОЕКТЫ, СТРАНИЦЫ, НАВЫКИ)
+    await sql`CREATE TABLE IF NOT EXISTS projects (id SERIAL PRIMARY KEY, title TEXT, slug TEXT UNIQUE, image_url TEXT, description TEXT, content JSONB, tech_stack TEXT[], live_url TEXT, github_url TEXT, featured BOOLEAN DEFAULT false, order_index INT);`;
+    await sql`CREATE TABLE IF NOT EXISTS pages (id SERIAL PRIMARY KEY, title TEXT, slug TEXT UNIQUE, content JSONB, meta_title TEXT, meta_desc TEXT, published BOOLEAN DEFAULT true);`;
+    await sql`CREATE TABLE IF NOT EXISTS skills (id SERIAL PRIMARY KEY, name TEXT, category TEXT, icon TEXT, level INT);`;
+    await sql`CREATE TABLE IF NOT EXISTS experience (id SERIAL PRIMARY KEY, title TEXT, company TEXT, period TEXT, description TEXT, type TEXT);`;
+
+    // 3. НАВИГАЦИЯ (ДИНАМИЧЕСКОЕ МЕНЮ)
+    await sql`CREATE TABLE IF NOT EXISTS navigation (id SERIAL PRIMARY KEY, label TEXT, url TEXT, order_index INT, parent_id INT);`;
+
+    // 4. ЛИДЫ И СООБЩЕНИЯ
+    await sql`CREATE TABLE IF NOT EXISTS leads (id SERIAL PRIMARY KEY, name TEXT, email TEXT, message TEXT, status TEXT DEFAULT 'new', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`;
+
+    // 5. ПОЛЬЗОВАТЕЛИ (пароль — хеш bcrypt)
+    await sql`CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      email TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'user'
+    );`;
+
+    // Инициализация "Пульта Управления"
+    await sql`INSERT INTO settings (key, value) VALUES 
+      ('site_name', 'WEB.CODER.PRO'),
+      ('logo_type', 'svg'), -- 'svg' or 'image'
+      ('logo_data', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/></svg>'),
+      ('primary_color', '#6366f1'),
+      ('font_family', 'Geist Sans'),
+      ('footer_text', '© 2026 Crafted by Web Coder')
+      ON CONFLICT (key) DO NOTHING;`;
+
+    return NextResponse.json({ message: "СИСТЕМА УПРАВЛЕНИЯ РАЗВЕРНУТА. ВСЕ МОДУЛИ ГОТОВЫ." });
+  } catch (e: any) { return NextResponse.json({ error: e.message }, { status: 500 }); }
 }
 </file>
 
@@ -1696,54 +2274,23 @@ export default async function HomePage() {
       <Header />
       <div className="min-h-screen bg-background text-foreground selection:bg-primary/20">
         {/* 1. Навигация */}
-        <nav className="fixed top-0 w-full z-50 border-b border-border bg-background/80 backdrop-blur-xl">
-  <div className="max-w-7xl mx-auto px-8 h-20 flex justify-between items-center">
-    {/* Логотип */}
-    <span className="text-xl font-black tracking-tighter text-foreground uppercase italic">
-      ВЕБ<span className="text-primary">.</span>КОДЕР
-    </span>
-
-    {/* Основное меню (центр) */}
-    <div className="hidden md:flex gap-8">
-      {nav.map(item => (
-        <a 
-          key={item.id} 
-          href={item.url} 
-          className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground hover:text-primary transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-        >
-          {item.label}
-        </a>
-      ))}
-    </div>
-
-    {/* Правый блок: Админка + Переключатель */}
-    <div className="flex items-center gap-6">
-      <a 
-        href="/admin" 
-        className="text-[10px] font-black uppercase tracking-widest opacity-20 hover:opacity-100 hover:text-primary transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-      >
-        Админка
-      </a>
-      <ThemeToggle />
-    </div>
-  </div>
-</nav>
+ 
 
         {/* 2. Герой-секция */}
         <section className="pt-40 pb-20 px-8 max-w-7xl mx-auto">
-          <h1 className="text-7xl md:text-9xl font-black tracking-tighter text-foreground mb-8 leading-[0.8] uppercase italic">
-            СОЗДАЮ <br /> 
-            <span className="text-primary">ЦИФРОВОЙ</span> ОПЫТ
+          <h1 className="text-7xl md:text-8xl font-black tracking-tighter text-foreground mb-8 leading-[0.8] uppercase italic">
+            I build <br /> 
+            <span className="text-primary">lightning-fast</span> custom websites.
           </h1>
           <p className="max-w-xl text-lg text-muted-foreground leading-relaxed font-medium">
-            Я разрабатываю высокопроизводительные веб-приложения и системы управления, где каждый пиксель имеет значение.
+          I help businesses and individuals build premium, high-performance web experiences.
           </p>
         </section>
 
         {/* 3. Матрица навыков */}
         <section className="py-20 px-8 max-w-7xl mx-auto border-t border-border">
           <div className="flex justify-between items-end mb-12">
-            <h2 className="text-3xl font-black text-foreground tracking-tight italic uppercase">Стек технологий</h2>
+            <h2 className="text-3xl font-black text-foreground tracking-tight italic uppercase">Tech Stack:</h2>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {skills.map(skill => (
@@ -1817,99 +2364,87 @@ export default async function HomePage() {
 }
 </file>
 
-<file path="src/app/api/setup/route.ts">
-import postgres from 'postgres';
-import { NextResponse } from 'next/server';
-
-export async function GET() {
-  const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
-  try {
-    // 1. БРЕНДИНГ И ДИЗАЙН
-    await sql`CREATE TABLE IF NOT EXISTS settings (id SERIAL PRIMARY KEY, key TEXT UNIQUE, value TEXT);`;
-    await sql`
-  CREATE TABLE IF NOT EXISTS messages (
-    id SERIAL PRIMARY KEY,
-    name TEXT,
-    email TEXT,
-    message TEXT,
-    is_read BOOLEAN DEFAULT false, -- Убеждаемся, что колонка называется именно так
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  );
-`;
-    // 2. КОНТЕНТ (ПРОЕКТЫ, СТРАНИЦЫ, НАВЫКИ)
-    await sql`CREATE TABLE IF NOT EXISTS projects (id SERIAL PRIMARY KEY, title TEXT, slug TEXT UNIQUE, image_url TEXT, description TEXT, content JSONB, tech_stack TEXT[], live_url TEXT, github_url TEXT, featured BOOLEAN DEFAULT false, order_index INT);`;
-    await sql`CREATE TABLE IF NOT EXISTS pages (id SERIAL PRIMARY KEY, title TEXT, slug TEXT UNIQUE, content JSONB, meta_title TEXT, meta_desc TEXT, published BOOLEAN DEFAULT true);`;
-    await sql`CREATE TABLE IF NOT EXISTS skills (id SERIAL PRIMARY KEY, name TEXT, category TEXT, icon TEXT, level INT);`;
-    await sql`CREATE TABLE IF NOT EXISTS experience (id SERIAL PRIMARY KEY, title TEXT, company TEXT, period TEXT, description TEXT, type TEXT);`;
-
-    // 3. НАВИГАЦИЯ (ДИНАМИЧЕСКОЕ МЕНЮ)
-    await sql`CREATE TABLE IF NOT EXISTS navigation (id SERIAL PRIMARY KEY, label TEXT, url TEXT, order_index INT, parent_id INT);`;
-
-    // 4. ЛИДЫ И СООБЩЕНИЯ
-    await sql`CREATE TABLE IF NOT EXISTS leads (id SERIAL PRIMARY KEY, name TEXT, email TEXT, message TEXT, status TEXT DEFAULT 'new', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`;
-
-    // Инициализация "Пульта Управления"
-    await sql`INSERT INTO settings (key, value) VALUES 
-      ('site_name', 'WEB.CODER.PRO'),
-      ('logo_type', 'svg'), -- 'svg' or 'image'
-      ('logo_data', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/></svg>'),
-      ('primary_color', '#6366f1'),
-      ('font_family', 'Geist Sans'),
-      ('footer_text', '© 2026 Crafted by Web Coder')
-      ON CONFLICT (key) DO NOTHING;`;
-
-    return NextResponse.json({ message: "СИСТЕМА УПРАВЛЕНИЯ РАЗВЕРНУТА. ВСЕ МОДУЛИ ГОТОВЫ." });
-  } catch (e: any) { return NextResponse.json({ error: e.message }, { status: 500 }); }
-}
-</file>
-
 <file path="src/app/layout.tsx">
 import { sql } from '@/lib/db';
 import './globals.css';
 import { ThemeProvider } from "@/components/theme-provider"
-import { Geist } from "next/font/google";
+import { Montserrat, Nunito } from "next/font/google";
 import { cn } from "@/lib/utils";
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+const inter = Montserrat({ 
+  subsets: ['latin', 'cyrillic'],
+  weight: ['400', '500', '700'], // Явно укажи веса
+  display: 'swap', 
+  variable:'--font-serif'
+});
+const nunito = Nunito({ 
+  subsets: ['latin', 'cyrillic'],
+  weight: ['400', '500', '700'], // Явно укажи веса
+  display: 'swap', 
+  variable:'--font-sans'
+});
+
+interface GlobalSettings {
+  header_height: number;
+  logo_width: number;
+  logo_height: number;
+  logo_url: string;
+  logo_custom_style: string;
+  custom_css: string;
+}
+
+export async function generateMetadata({ params }: { params: any }) {
+  // Определяем, на какой мы странице (например, 'home')
+  const pageKey = 'home'; 
+  
+  const [seo] = await sql`SELECT title, description FROM seo WHERE page = ${pageKey}`;
+
+  return {
+    title: seo?.title || "Дефолтный заголовок",
+    description: seo?.description || "Дефолтное описание",
+  };
+}
 
 export const dynamic = 'force-dynamic';
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  let cfg: Record<string, string> = {};
+export default async function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  // 1. Получаем настройки из Neon
+  // Добавляем [0], так как sql обычно возвращает массив
+  const [settings] = await sql<GlobalSettings[]>`
+    SELECT * FROM global_settings WHERE id = 1 LIMIT 1
+  `;
 
-  try {
-    const settings = await sql`SELECT key, value FROM settings`;
-    cfg = Object.fromEntries(settings.map(s => [s.key, s.value]));
-  } catch (e) {
-    console.warn("⚠️ База данных не инициализирована. Используются стандартные настройки.");
-  }
-
-  const primaryColor = cfg.primary_color || '#6366f1';
-  const borderRadius = cfg.border_radius || '16px';
-  const fontFamily = cfg.font_family || 'Geist Sans';
+  // Фоллбек на случай, если база пуста (чтобы сайт не упал)
+  const s = settings || {
+    header_height: 64,
+    logo_width: 120,
+    logo_height: 40,
+    logo_url: '/logo.svg',
+    logo_custom_style: '',
+    custom_css: ''
+  };
 
   return (
-    <html lang="ru" suppressHydrationWarning className={cn("font-sans", geist.variable)}>
+    <html lang="ru" suppressHydrationWarning>
       <head>
-        <style dangerouslySetInnerHTML={{ __html: `
-          :root {
-            --primary: ${primaryColor};
-            --radius: ${borderRadius};
-          }
-          body {
-            font-family: ${fontFamily}, var(--font-sans);
-          }
-        `}} />
+        {/* 2. Инъекция кастомного CSS из админки */}
+        {s.custom_css && (
+          <style id="custom-css" dangerouslySetInnerHTML={{ __html: s.custom_css }} />
+        )}
       </head>
-      <body className="antialiased bg-background text-foreground selection:bg-primary/20 selection:text-primary-foreground min-h-screen">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          {children}
-        </ThemeProvider>
+      <body 
+        style={{ 
+          '--header-height': `${s.header_height}px`,
+          '--logo-width': `${s.logo_width}px`,
+          '--logo-height': `${s.logo_height}px`
+        } as React.CSSProperties}
+        className="min-h-screen bg-background font-sans antialiased"
+      >
+        {children}
       </body>
     </html>
   );

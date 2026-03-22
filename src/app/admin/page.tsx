@@ -29,7 +29,7 @@ export default async function AdminDashboard() {
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Проекты */}
-        <div className="bg-card text-card-foreground border border-border p-8 rounded-[2rem] flex items-center justify-between shadow-sm transition-all hover:border-primary/20">
+        <div className="bg-card text-card-foreground p-8 rounded-[2rem] flex items-center justify-between">
           <div>
             <div className="text-4xl font-black text-foreground">{projectsCount}</div>
             <div className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mt-1">
@@ -40,7 +40,7 @@ export default async function AdminDashboard() {
         </div>
 
         {/* Навыки */}
-        <div className="bg-card text-card-foreground border border-border p-8 rounded-[2rem] flex items-center justify-between shadow-sm transition-all hover:border-primary/20">
+        <div className="bg-card text-card-foreground p-8 rounded-[2rem] flex items-center justify-between">
           <div>
             <div className="text-4xl font-black text-foreground">{skillsCount}</div>
             <div className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mt-1">
@@ -51,7 +51,7 @@ export default async function AdminDashboard() {
         </div>
 
         {/* Сообщения (Акцентная карточка) */}
-        <div className="bg-card text-card-foreground border border-primary/20 p-8 rounded-[2rem] flex items-center justify-between shadow-lg shadow-primary/5 transition-all hover:border-primary">
+        <div className="bg-card text-card-foreground p-8 rounded-[2rem] flex items-center justify-between">
           <div>
             <div className="text-4xl font-black text-primary">{newMessages}</div>
             <div className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mt-1">

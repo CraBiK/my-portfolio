@@ -28,6 +28,14 @@ export async function GET() {
     // 4. ЛИДЫ И СООБЩЕНИЯ
     await sql`CREATE TABLE IF NOT EXISTS leads (id SERIAL PRIMARY KEY, name TEXT, email TEXT, message TEXT, status TEXT DEFAULT 'new', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`;
 
+    // 5. ПОЛЬЗОВАТЕЛИ (пароль — хеш bcrypt)
+    await sql`CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      email TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'user'
+    );`;
+
     // Инициализация "Пульта Управления"
     await sql`INSERT INTO settings (key, value) VALUES 
       ('site_name', 'WEB.CODER.PRO'),

@@ -21,19 +21,19 @@ export default async function HomePage() {
 
         {/* 2. Герой-секция */}
         <section className="pt-40 pb-20 px-8 max-w-7xl mx-auto">
-          <h1 className="text-7xl md:text-9xl font-black tracking-tighter text-foreground mb-8 leading-[0.8] uppercase italic">
-            СОЗДАЮ <br /> 
-            <span className="text-primary">ЦИФРОВОЙ</span> ОПЫТ
+          <h1 className="text-7xl md:text-8xl font-black tracking-tighter text-foreground mb-8 leading-[0.8] uppercase italic">
+            I build <br /> 
+            <span className="text-primary">lightning-fast</span> custom websites.
           </h1>
           <p className="max-w-xl text-lg text-muted-foreground leading-relaxed font-medium">
-            Я разрабатываю высокопроизводительные веб-приложения и системы управления, где каждый пиксель имеет значение.
+          I help businesses and individuals build premium, high-performance web experiences.
           </p>
         </section>
 
         {/* 3. Матрица навыков */}
         <section className="py-20 px-8 max-w-7xl mx-auto border-t border-border">
           <div className="flex justify-between items-end mb-12">
-            <h2 className="text-3xl font-black text-foreground tracking-tight italic uppercase">Стек технологий</h2>
+            <h2 className="text-3xl font-black text-foreground tracking-tight italic uppercase">Tech Stack:</h2>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {skills.map(skill => (
