@@ -13,7 +13,7 @@
 repomix-output.xml
 # testing
 /coverage
-
+/repomix
 # next.js
 /.next/
 /out/
