@@ -36,6 +36,20 @@ export async function GET() {
       role TEXT NOT NULL DEFAULT 'user'
     );`;
 
+    // 6. МЕДИА (Vercel Blob / внешние URL)
+    await sql`CREATE TABLE IF NOT EXISTS media (
+      id SERIAL PRIMARY KEY,
+      url TEXT NOT NULL,
+      name TEXT NOT NULL,
+      size INTEGER,
+      type TEXT,
+      width INTEGER,
+      height INTEGER,
+      created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    );`;
+    await sql`CREATE EXTENSION IF NOT EXISTS pg_trgm`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_media_name ON media USING gin (name gin_trgm_ops)`;
+
     // Инициализация "Пульта Управления"
     await sql`INSERT INTO settings (key, value) VALUES 
       ('site_name', 'WEB.CODER.PRO'),

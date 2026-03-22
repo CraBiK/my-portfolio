@@ -3,7 +3,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { LogoutButton } from "@/components/admin/logout";
 import Link from 'next/link';
 import Image from 'next/image';
-import { LayoutDashboard, Rocket, FileText, Share2, Layers, Shield, Palette, Bolt } from 'lucide-react';
+import { LayoutDashboard, Rocket, FileText, Share2, Layers, Shield, Palette, Bolt, Images } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const menu = [
@@ -12,6 +12,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: 'Страницы', icon: <FileText size={18}/>, href: '/admin/pages' },
     { name: 'Меню', icon: <Layers size={18}/>, href: '/admin/navigation' },
     { name: 'Брендинг', icon: <Palette size={18}/>, href: '/admin/branding' },
+    { name: 'Медиа', icon: <Images size={18}/>, href: '/admin/media' },
     { name: 'SEO', icon: <Shield size={18}/>, href: '/admin/seo' },
 		{ name: 'Settings', icon: <Bolt size={18}/>, href: '/admin/settings' },
   ];

@@ -80,4 +80,24 @@ export async function logout(): Promise<void> {
   store.delete(SESSION_COOKIE);
 }
 
+/**
+ * Текущая сессия из httpOnly JWT или null.
+ */
+export async function getSession(): Promise<SessionPayload | null> {
+  const store = await cookies();
+  const token = store.get(SESSION_COOKIE)?.value;
+  return decrypt(token);
+}
+
+/**
+ * Только для Server Actions / RSC: не-админы получают исключение.
+ */
+export async function requireAdmin(): Promise<SessionPayload> {
+  const session = await getSession();
+  if (!session || session.role !== "admin") {
+    throw new Error("Доступ запрещён");
+  }
+  return session;
+}
+
 export { SESSION_COOKIE as SESSION_COOKIE_NAME };
