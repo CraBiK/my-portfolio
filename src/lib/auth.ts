@@ -46,9 +46,8 @@ export async function encrypt(payload: SessionPayload): Promise<string> {
 /**
  * Проверяет подпись JWT и возвращает payload или null.
  */
-export async function decrypt(
-  token: string
-): Promise<SessionPayload | null> {
+export async function decrypt(token: string | undefined): Promise<SessionPayload | null> {
+  if (!token) return null;
   try {
     const key = getSecretKey();
     const { payload } = await jwtVerify(token, key);
