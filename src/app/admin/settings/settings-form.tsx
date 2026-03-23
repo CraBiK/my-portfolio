@@ -54,7 +54,11 @@ export default function SettingsForm({ initialData, initialSeo }: any) {
       footer_text: formData.get("footer_text") as string,
     });
     setIsPending(false);
-    setStatus(result.success ? { type: 'success', message: 'Конфигурация сохранена' } : { type: 'error', message: result.error });
+    setStatus(
+      result.success 
+        ? { type: 'success', message: 'Конфигурация сохранена' } 
+        : { type: 'error', message: result.error || 'Произошла неизвестная ошибка' }
+    );
   }
 
   return (
