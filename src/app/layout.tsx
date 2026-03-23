@@ -39,6 +39,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="ru" suppressHydrationWarning>
       <head>
+				<script
+          async
+          crossOrigin="anonymous"
+          src="https://tweakcn.com/live-preview.min.js"
+        />
         {/* Инъекция стилей */}
         <style dangerouslySetInnerHTML={{ __html: settings?.custom_css || "" }} />
       </head>
