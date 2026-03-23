@@ -11,7 +11,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: 'Проекты', icon: <Rocket size={18}/>, href: '/admin/projects' },
     { name: 'Страницы', icon: <FileText size={18}/>, href: '/admin/pages' },
     { name: 'Меню', icon: <Layers size={18}/>, href: '/admin/navigation' },
-    { name: 'Брендинг', icon: <Palette size={18}/>, href: '/admin/branding' },
     { name: 'Медиа', icon: <Images size={18}/>, href: '/admin/media' },
     { name: 'SEO', icon: <Shield size={18}/>, href: '/admin/seo' },
 		{ name: 'Settings', icon: <Bolt size={18}/>, href: '/admin/settings' },

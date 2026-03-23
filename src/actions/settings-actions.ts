@@ -2,32 +2,34 @@
 
 import { sql } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
-import { cookies } from 'next/headers';
-import { decrypt, SESSION_COOKIE_NAME } from '@/lib/auth';
+//import { cookies } from 'next/headers';
+import { requireAdmin } from '@/lib/auth';
 
 interface AllSettings {
+  // Layout & Logo
   header_height: number;
   logo_width: number;
   logo_height: number;
   logo_url: string;
+  logo_type: 'svg' | 'image';
+  logo_data?: string;
   logo_custom_style: string;
+  // Design Tokens
+  primary_color: string;
+  font_family: string;
+  border_radius: string;
   custom_css: string;
+  // SEO & Text
   site_title: string;
   site_description: string;
+  footer_text: string;
 }
 
 export async function updateAllSettings(data: AllSettings) {
   try {
-    // 1. ПРОВЕРКА АВТОРИЗАЦИИ (Безопасность)
-    const cookieStore = await cookies();
-    const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-    const session = await decrypt(token);
+    await requireAdmin();
 
-    if (!session || session.role !== 'admin') {
-      return { success: false, error: 'Доступ запрещен: требуется роль администратора' };
-    }
-
-    // 2. ОБНОВЛЕНИЕ ГЛОБАЛЬНЫХ НАСТРОЕК
+    // 1. Обновление глобальных настроек (включая токены дизайна)
     await sql`
       UPDATE global_settings
       SET
@@ -35,13 +37,19 @@ export async function updateAllSettings(data: AllSettings) {
         logo_width = ${data.logo_width},
         logo_height = ${data.logo_height},
         logo_url = ${data.logo_url},
+        logo_type = ${data.logo_type},
+        logo_data = ${data.logo_data || null},
         logo_custom_style = ${data.logo_custom_style},
+        primary_color = ${data.primary_color},
+        font_family = ${data.font_family},
+        border_radius = ${data.border_radius},
         custom_css = ${data.custom_css},
+        footer_text = ${data.footer_text},
         updated_at = CURRENT_TIMESTAMP
       WHERE id = 1
     `;
 
-    // 3. ОБНОВЛЕНИЕ SEO
+    // 2. Обновление SEO
     await sql`
       UPDATE seo
       SET
@@ -55,6 +63,9 @@ export async function updateAllSettings(data: AllSettings) {
 
   } catch (error) {
     console.error('Update Error:', error);
-    return { success: false, error: 'Ошибка при сохранении в базу данных Neon' };
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Ошибка при сохранении' 
+    };
   }
 }

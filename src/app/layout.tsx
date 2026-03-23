@@ -5,13 +5,17 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { Montserrat, Nunito } from "next/font/google";
 import { cn } from "@/lib/utils";
 
-const inter = Montserrat({ 
+const fontSans = Montserrat({ 
   subsets: ['latin', 'cyrillic'],
   weight: ['400', '500', '700'], // Явно укажи веса
-  display: 'swap', 
-  variable:'--font-serif'
+  variable:'--font-sans'
 });
 
+const fontSerif = Nunito({ 
+  subsets: ['latin', 'cyrillic'],
+  weight: ['400', '500', '700'], // Явно укажи веса 
+  variable:'--font-serif'
+});
 
 interface GlobalSettings {
   header_height: number;
@@ -47,7 +51,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {/* Инъекция стилей */}
         <style dangerouslySetInnerHTML={{ __html: settings?.custom_css || "" }} />
       </head>
-      <body style={{ 
+      <body className={`${fontSans.variable} ${fontSerif.variable} antialiased`} style={{ 
         '--header-height': `${settings?.header_height || 64}px`,
         '--logo-width': `${settings?.logo_width || 120}px`,
         '--logo-height': `${settings?.logo_height || 40}px`

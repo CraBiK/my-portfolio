@@ -17,7 +17,7 @@ export default async function Header() {
   return (
     <header className="sticky top-0 z-50 h-[var(--header-height)] w-full border-b bg-background/80 backdrop-blur-xl text-foreground">
       <div className="container flex h-full items-center justify-between mx-auto max-w-7xl">
-        <div className="relative flex-none mx-auto h-lg items-center">
+        <div className="relative flex-none mx-auto h-lg items-center logo">
           <Logo />
         </div>
         

@@ -42,8 +42,8 @@ export function StatusToast({
           "animate-in fade-in slide-in-from-bottom-3 duration-300",
           // Семантические цвета из твоего .cursorrules
           isSuccess
-            ? "bg-primary/10 border-primary/20 text-primary backdrop-blur-md"
-            : "bg-destructive/10 border-destructive/30 text-destructive font-medium backdrop-blur-md"
+            ? "bg-success border-success text-success-foreground"
+            : "bg-destructive/10 border-destructive/30 text-destructive font-medium"
         )}
       >
         <div className="flex items-center gap-3">

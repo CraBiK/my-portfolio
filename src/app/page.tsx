@@ -28,7 +28,7 @@ export default async function HomePage() {
           <p className="max-w-xl text-lg text-muted-foreground leading-relaxed font-medium">
           I help businesses and individuals build premium, high-performance web experiences.
           </p>
-        </section>
+				</section>
 
         {/* 3. Матрица навыков */}
         <section className="py-20 px-8 max-w-7xl mx-auto border-t border-border">
